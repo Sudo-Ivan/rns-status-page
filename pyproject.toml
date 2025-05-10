@@ -18,12 +18,12 @@ packages = [
 
 [tool.poetry.dependencies]
 python = ">=3.13"
-flask = "*"
-python-dotenv = "*"
-gunicorn = "*"
-flask-talisman = "*"
-flask-limiter = "*"
-rns = "*"
+flask = "3.1.0"
+python-dotenv = "1.1.0"
+gunicorn = "23.0.0"
+flask-talisman = "1.1.0"
+flask-limiter = "3.12"
+rns = "0.9.5"
 
 [tool.poetry.scripts]
 rns-status-page = "rns_status_page.status_page:main"
