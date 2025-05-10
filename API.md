@@ -4,9 +4,7 @@ The RNS Status Page provides several API endpoints that can be used externally t
 
 Public endpoints:
 
-```
-rnstatus.quad4.io
-```
+`rnstatus.quad4.io`
 
 ### Get All Status Cards
 
@@ -14,18 +12,23 @@ Retrieves the current status of all interfaces. Supports both HTML and JSON outp
 
 - **Endpoint:** `/api/status`
 - **Method:** `GET`
-- **Returns:** 
+- **Returns:**
     - `text/html` (default): An HTML snippet of status cards.
     - `application/json`: A JSON object containing the timestamp, raw status data, and debug information.
 - **Example (HTML):**
+
   ```bash
   curl https://rnstatus.quad4.io/api/status
   ```
+
 - **Example (JSON):**
+
   ```bash
   curl -H "Accept: application/json" https://rnstatus.quad4.io/api/status
   ```
+
 - **JSON Response Structure:**
+
   ```json
   {
     "timestamp": "2025-05-10T10:00:00.123456",
@@ -36,10 +39,10 @@ Retrieves the current status of all interfaces. Supports both HTML and JSON outp
         "status": "Up",
         "details": {
           "IP Address": "X.X.X.X",
-          "Mode": "Point-to-point",
+          "Mode": "Point-to-point"
         },
         "first_up_timestamp": 1698397200.0
-      },
+      }
     },
     "debug": {
       "processing_time_ms": 5.2,
@@ -60,15 +63,18 @@ Searches for interfaces matching a query string. Supports both HTML and JSON out
     - `text/html` (default): An HTML snippet of matching status cards.
     - `application/json`: A JSON object containing the timestamp, filtered status data, debug information, and the query.
 - **Example (HTML):**
+
   ```bash
   curl "https://rnstatus.quad4.io/api/search?q=TCP"
   ```
+
 - **Example (JSON):**
+
   ```bash
   curl -H "Accept: application/json" "https://rnstatus.quad4.io/api/search?q=TCP"
   ```
-  
-- **JSON Response Structure (similar to /api/status, but `data` is filtered and includes a `query` field):
+
+- **JSON Response Structure (similar to /api/status, but `data` is filtered and includes a `query` field):**
 
   ```json
   {
@@ -90,7 +96,8 @@ Exports the configuration for a specific TCP interface as a downloadable text fi
 - **Endpoint:** `/api/export/<interface_name_slug>`
 - **Method:** `GET`
 - **Returns:** `text/plain` (with `Content-Disposition: attachment`)
-- **Example (for an interface named `mypeer/192.168.1.100:4242`):
+- **Example (for an interface named `mypeer/192.168.1.100:4242`):**
+
   ```bash
   curl https://rnstatus.quad4.io/api/export/mypeer_192.168.1.100:4242 -o mypeer_config.txt
   ```
@@ -103,6 +110,7 @@ Exports configurations for all TCP interfaces as a single downloadable text file
 - **Method:** `GET`
 - **Returns:** `text/plain` (with `Content-Disposition: attachment`)
 - **Example:**
+
   ```bash
   curl https://rnstatus.quad4.io/api/export-all -o all_interfaces.txt
   ```
@@ -114,7 +122,8 @@ A Server-Sent Events (SSE) stream that pushes updates whenever the status data c
 - **Endpoint:** `/events`
 - **Method:** `GET`
 - **Returns:** `text/event-stream`
-- **Example (using `curl` or a browser JavaScript EventSource):
+- **Example (using `curl` or a browser JavaScript EventSource):**
+
   ```bash
   curl -N https://rnstatus.quad4.io/events
   ```
@@ -127,6 +136,7 @@ Provides JSON output with debugging information about the server environment.
 - **Method:** `GET`
 - **Returns:** `application/json`
 - **Example:**
+
   ```bash
   curl https://rnstatus.quad4.io/api/debug
   ```
