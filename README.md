@@ -20,13 +20,20 @@ It uses `uptime.json` to track uptime of interfaces and persist across rns-statu
 
 ## Docker/Podman
 
-WIP
+```bash
+docker run -d --name rns-status-page -p 5000:5000 ghcr.io/sudo-ivan/rns-status-page:latest
+```
+
+```bash
+docker run -d --name rns-status-page -p 5000:5000 -v ./uptime.json:/app/uptime.json ghcr.io/sudo-ivan/rns-status-page:latest
+```
+
+replace `docker` with `podman` if you are using podman.
 
 ## To-Do
 
 - [ ] More tracking and stats.
 - [ ] Filter by reliability, uptime.
-- [ ] Dockerfile/Compose files.
 - [ ] Micron Status Page.
 - [ ] Optional I2P, yggdrasil support.
 
