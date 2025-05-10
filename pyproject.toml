@@ -4,9 +4,9 @@ version = "1.0.0"
 description = "A Flask web server to display Reticulum network status."
 authors = ["Ivan <rns@quad4.io>"]
 readme = "README.md"
-license = "MIT"  # Derived from your previous classifiers
-homepage = "https://github.com/Sudo-Ivan/rns-status-page"  # Please update this URL
-repository = "https://github.com/Sudo-Ivan/rns-status-page" # Please update this URL
+license = "MIT"
+homepage = "https://github.com/Sudo-Ivan/rns-status-page"
+repository = "https://github.com/Sudo-Ivan/rns-status-page"
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
@@ -27,6 +27,9 @@ rns = "0.9.5"
 
 [tool.poetry.scripts]
 rns-status-page = "rns_status_page.status_page:main"
+
+[tool.poetry.group.dev.dependencies]
+interrogate = "^1.7.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
