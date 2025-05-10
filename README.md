@@ -20,6 +20,10 @@ It uses `uptime.json` to track uptime of interfaces and persist across rns-statu
 
 WIP
 
+## API
+
+Read the [API.md](API.md) file for more information on api usage.
+
 ## How it works
 
 1. starts `rnsd` in a seperate thread.
