@@ -1,12 +1,12 @@
 :root {
-    --bg-color: #1a1a1a;
-    --text-color: #e0e0e0;
-    --card-bg: #2d2d2d;
-    --up-color: #4caf50;
-    --down-color: #f44336;
-    --border-color: #404040;
-    --error-bg: #442222;
-    --hover-color: rgba(255, 255, 255, 0.1);
+    --bg-color: #0D0D0D;
+    --text-color: #FFFFFF;
+    --card-bg: #1A1A1A;
+    --up-color: #00FF85;
+    --down-color: #FF0099;
+    --border-color: #333333;
+    --error-bg: #55002B;
+    --hover-color: rgba(30, 144, 255, 0.15);
 }
 
 body {
