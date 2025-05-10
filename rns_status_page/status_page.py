@@ -73,6 +73,7 @@ def load_uptime_tracker(filepath):
 
     Returns:
         dict: The loaded uptime tracker data, or an empty dictionary if loading fails.
+
     """
     if os.path.exists(filepath):
         try:
@@ -98,6 +99,7 @@ def save_uptime_tracker(filepath, data):
     Args:
         filepath (str): The path to the JSON file.
         data (dict): The uptime tracker data to save.
+
     """
     temp_filepath = None
     try:
@@ -129,6 +131,7 @@ def run_rnsd():
 
     Returns:
         bool: True if rnsd started successfully, False otherwise.
+
     """
     global _rnsd_process
 
@@ -176,6 +179,7 @@ def check_rnstatus_installation():
     
     Returns:
         tuple: (bool, str) - (is_installed, error_message)
+
     """
     rnstatus_path = shutil.which('rnstatus')
     if not rnstatus_path:
@@ -199,6 +203,7 @@ def get_rnstatus_from_command():
 
     Returns:
         str: The output of the rnstatus command, or an error message.
+
     """
     try:
         is_installed, error_msg = check_rnstatus_installation()
@@ -246,6 +251,7 @@ def get_and_cache_rnstatus_data():
 
     Returns:
         tuple: A tuple containing the parsed data and the current time.
+
     """
     raw_output = get_rnstatus_from_command()
     parsed_data, updated_tracker = parse_rnstatus(raw_output, _cache['interface_uptime_tracker'])
@@ -275,6 +281,7 @@ def get_status_data_with_caching():
 
     Returns:
         dict: A dictionary containing the timestamp, data, and debug information.
+
     """
     start_process_time = time.time()
     with _cache['lock']:
@@ -309,6 +316,7 @@ def parse_rnstatus(output, current_uptime_tracker):
 
     Returns:
         tuple: A tuple containing the parsed data and the updated uptime tracker.
+
     """
     sections = {}
     current_section_title = None
@@ -374,7 +382,7 @@ def parse_rnstatus(output, current_uptime_tracker):
                 new_status = 'Up' if 'Up' in value else 'Down'
                 target_section = sections[current_section_title]
                 tracker_key = target_section['name']
-                
+
                 if tracker_key not in updated_tracker:
                     updated_tracker[tracker_key] = {
                         'first_up_timestamp': None,
@@ -401,12 +409,12 @@ def parse_rnstatus(output, current_uptime_tracker):
                     else:
                         target_section['first_up_timestamp'] = current_time_for_uptime
                         updated_tracker[tracker_key]['first_up_timestamp'] = current_time_for_uptime
-                    
+
                     updated_tracker[tracker_key]['last_seen_up'] = current_time_for_uptime
                 else:
                     target_section['first_up_timestamp'] = None
                     updated_tracker[tracker_key]['first_up_timestamp'] = None
-                
+
                 updated_tracker[tracker_key]['current_status'] = new_status
 
             if key == "Traffic":
@@ -429,6 +437,7 @@ def create_status_card(section, info):
 
     Returns:
         str: The HTML for the status card.
+
     """
     status_class = 'status-up' if info['status'] == 'Up' else 'status-down'
 
@@ -510,6 +519,7 @@ def format_duration(seconds):
 
     Returns:
         str: Human-readable duration string.
+
     """
     if seconds <= 0:
         return 'N/A'
@@ -556,7 +566,7 @@ def status():
     for section, info in data_payload['data'].items():
         if section not in IGNORE_SECTIONS:
             cards_html += create_status_card(section, info)
-    
+
     return cards_html if cards_html else '<div class="status-card error-card"><div class="error-message">No interfaces found or rnstatus output was empty.</div></div>'
 
 @app.route('/api/search')
@@ -580,7 +590,7 @@ def search():
         if section in IGNORE_SECTIONS:
             continue
         if not isinstance(info, dict):
-            continue 
+            continue
 
         if (query in section.lower() or
             query in info.get('name', '').lower() or
@@ -739,6 +749,7 @@ def main():
 
     class StandaloneApplication(gunicorn.app.base.BaseApplication):
         """Gunicorn application."""
+
         def __init__(self, app, options=None):
             """Initialize the application."""
             self.options = options or {}
