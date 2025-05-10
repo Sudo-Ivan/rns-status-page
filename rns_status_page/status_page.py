@@ -63,18 +63,73 @@ CACHE_DURATION_SECONDS = 30
 RETRY_INTERVAL_SECONDS = 30
 SSE_UPDATE_INTERVAL_SECONDS = 5
 
+UPTIME_FILE_PATH = 'uptime.json'
+
+def load_uptime_tracker(filepath):
+    """Load uptime tracker data from a JSON file.
+
+    Args:
+        filepath (str): The path to the JSON file.
+
+    Returns:
+        dict: The loaded uptime tracker data, or an empty dictionary if loading fails.
+    """
+    if os.path.exists(filepath):
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                if isinstance(data, dict):
+                    logger.info(f"Successfully loaded uptime tracker from {filepath}")
+                    return data
+                else:
+                    logger.warning(f"Corrupted uptime tracker file (not a dict): {filepath}. Starting fresh.")
+                    return {}
+        except json.JSONDecodeError:
+            logger.warning(f"Error decoding JSON from uptime tracker file: {filepath}. Starting fresh.")
+            return {}
+        except Exception as e:
+            logger.error(f"Unexpected error loading uptime tracker from {filepath}: {e}. Starting fresh.")
+            return {}
+    return {}
+
+def save_uptime_tracker(filepath, data):
+    """Save uptime tracker data to a JSON file atomically.
+
+    Args:
+        filepath (str): The path to the JSON file.
+        data (dict): The uptime tracker data to save.
+    """
+    temp_filepath = None
+    try:
+        fd, temp_filepath = tempfile.mkstemp(dir=os.path.dirname(filepath) or '.', prefix=os.path.basename(filepath) + '.tmp')
+        with os.fdopen(fd, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=4)
+        shutil.move(temp_filepath, filepath)
+        logger.debug(f"Successfully saved uptime tracker to {filepath}")
+    except Exception as e:
+        logger.error(f"Error saving uptime tracker to {filepath}: {e}")
+        if temp_filepath and os.path.exists(temp_filepath):
+            try:
+                os.remove(temp_filepath)
+            except Exception as re:
+                logger.error(f"Error removing temporary uptime file {temp_filepath}: {re}")
+
 _cache = {
     'data': None,
     'timestamp': 0,
     'lock': threading.Lock(),
-    'interface_uptime_tracker': {}
+    'interface_uptime_tracker': load_uptime_tracker(UPTIME_FILE_PATH)
 }
 
 _rnsd_process = None
 _rnsd_thread = None
 
 def run_rnsd():
-    """Run rnsd daemon in a separate thread."""
+    """Run rnsd daemon in a separate thread.
+
+    Returns:
+        bool: True if rnsd started successfully, False otherwise.
+    """
     global _rnsd_process
 
     try:
@@ -121,7 +176,6 @@ def check_rnstatus_installation():
     
     Returns:
         tuple: (bool, str) - (is_installed, error_message)
-
     """
     rnstatus_path = shutil.which('rnstatus')
     if not rnstatus_path:
@@ -141,7 +195,11 @@ def check_rnstatus_installation():
         return False, f"Error checking rnstatus: {str(e)}"
 
 def get_rnstatus_from_command():
-    """Execute rnstatus command and return the output."""
+    """Execute rnstatus command and return the output.
+
+    Returns:
+        str: The output of the rnstatus command, or an error message.
+    """
     try:
         is_installed, error_msg = check_rnstatus_installation()
         if not is_installed:
@@ -184,29 +242,40 @@ def get_rnstatus_from_command():
         return f"Error: {error_msg}"
 
 def get_and_cache_rnstatus_data():
-    """Fetch rnstatus data, parse it, update uptime info, and update the cache."""
+    """Fetch rnstatus data, parse it, update uptime info, and update the cache.
+
+    Returns:
+        tuple: A tuple containing the parsed data and the current time.
+    """
     raw_output = get_rnstatus_from_command()
     parsed_data, updated_tracker = parse_rnstatus(raw_output, _cache['interface_uptime_tracker'])
     current_time = time.time()
 
     with _cache['lock']:
-        for info in parsed_data.values():
-            if info.get('status') == 'Up':
-                tracker_key = info['name']
-                if tracker_key in _cache['interface_uptime_tracker']:
-                    prev_tracker = _cache['interface_uptime_tracker'][tracker_key]
-                    if prev_tracker.get('current_status') == 'Up' and prev_tracker.get('first_up_timestamp'):
-                        info['first_up_timestamp'] = prev_tracker['first_up_timestamp']
-                        updated_tracker[tracker_key]['first_up_timestamp'] = prev_tracker['first_up_timestamp']
+        if not ("error" in parsed_data or "warning" in parsed_data):
+            for info in parsed_data.values():
+                if isinstance(info, dict) and info.get('status') == 'Up':
+                    tracker_key = info.get('name')
+                    if tracker_key and tracker_key in _cache['interface_uptime_tracker']:
+                        prev_tracker = _cache['interface_uptime_tracker'][tracker_key]
+                        if prev_tracker.get('current_status') == 'Up' and prev_tracker.get('first_up_timestamp'):
+                            info['first_up_timestamp'] = prev_tracker['first_up_timestamp']
+                            if isinstance(updated_tracker.get(tracker_key), dict):
+                                updated_tracker[tracker_key]['first_up_timestamp'] = prev_tracker['first_up_timestamp']
 
         _cache['data'] = parsed_data
         _cache['timestamp'] = current_time
         _cache['interface_uptime_tracker'] = updated_tracker
+        save_uptime_tracker(UPTIME_FILE_PATH, _cache['interface_uptime_tracker'])
 
     return parsed_data, current_time
 
 def get_status_data_with_caching():
-    """Get status data, utilizing the cache if available and fresh."""
+    """Get status data, utilizing the cache if available and fresh.
+
+    Returns:
+        dict: A dictionary containing the timestamp, data, and debug information.
+    """
     start_process_time = time.time()
     with _cache['lock']:
         cached_data = _cache['data']
@@ -232,7 +301,15 @@ def get_status_data_with_caching():
     }
 
 def parse_rnstatus(output, current_uptime_tracker):
-    """Parse the rnstatus output into a structured format."""
+    """Parse the rnstatus output into a structured format.
+
+    Args:
+        output (str): The raw output from the rnstatus command.
+        current_uptime_tracker (dict): The current uptime tracker data.
+
+    Returns:
+        tuple: A tuple containing the parsed data and the updated uptime tracker.
+    """
     sections = {}
     current_section_title = None
     is_current_section_ignored = False
@@ -284,6 +361,9 @@ def parse_rnstatus(output, current_uptime_tracker):
                         'current_status': 'Down',
                         'last_seen_up': None
                     }
+                else:
+                    updated_tracker[tracker_key]['current_status'] = previous_record.get('current_status', 'Down')
+                    updated_tracker[tracker_key]['last_seen_up'] = previous_record.get('last_seen_up')
 
         elif current_section_title and not is_current_section_ignored and ':' in line:
             key, value_part = line.split(':', 1)
@@ -292,30 +372,42 @@ def parse_rnstatus(output, current_uptime_tracker):
 
             if key == "Status":
                 new_status = 'Up' if 'Up' in value else 'Down'
-                tracker_key = sections[current_section_title]['name']
-                current_status = updated_tracker[tracker_key]['current_status']
+                target_section = sections[current_section_title]
+                tracker_key = target_section['name']
+                
+                if tracker_key not in updated_tracker:
+                    updated_tracker[tracker_key] = {
+                        'first_up_timestamp': None,
+                        'current_status': 'Down',
+                        'last_seen_up': None
+                    }
 
-                sections[current_section_title]['status'] = new_status
+                previous_status_in_tracker = updated_tracker[tracker_key].get('current_status', 'Down')
+                persisted_first_up_ts = updated_tracker[tracker_key].get('first_up_timestamp')
+                persisted_last_seen_up = updated_tracker[tracker_key].get('last_seen_up')
+
+                target_section['status'] = new_status
 
                 if new_status == 'Up':
-                    if current_status == 'Down':
-                        first_up_ts = current_time_for_uptime
-                        sections[current_section_title]['first_up_timestamp'] = first_up_ts
-                        updated_tracker[tracker_key]['first_up_timestamp'] = first_up_ts
-                        updated_tracker[tracker_key]['current_status'] = 'Up'
-                        updated_tracker[tracker_key]['last_seen_up'] = current_time_for_uptime
+                    if previous_status_in_tracker == 'Up':
+                        if persisted_first_up_ts:
+                            target_section['first_up_timestamp'] = persisted_first_up_ts
+                        elif persisted_last_seen_up:
+                            target_section['first_up_timestamp'] = persisted_last_seen_up
+                            updated_tracker[tracker_key]['first_up_timestamp'] = persisted_last_seen_up
+                        else:
+                            target_section['first_up_timestamp'] = current_time_for_uptime
+                            updated_tracker[tracker_key]['first_up_timestamp'] = current_time_for_uptime
                     else:
-                        if not updated_tracker[tracker_key]['first_up_timestamp']:
-                            first_up_ts = updated_tracker[tracker_key].get('last_seen_up', current_time_for_uptime)
-                            sections[current_section_title]['first_up_timestamp'] = first_up_ts
-                            updated_tracker[tracker_key]['first_up_timestamp'] = first_up_ts
-                        updated_tracker[tracker_key]['last_seen_up'] = current_time_for_uptime
+                        target_section['first_up_timestamp'] = current_time_for_uptime
+                        updated_tracker[tracker_key]['first_up_timestamp'] = current_time_for_uptime
+                    
+                    updated_tracker[tracker_key]['last_seen_up'] = current_time_for_uptime
                 else:
-                    if current_status == 'Up':
-                        sections[current_section_title]['first_up_timestamp'] = None
-                        updated_tracker[tracker_key]['first_up_timestamp'] = None
-                        updated_tracker[tracker_key]['current_status'] = 'Down'
-                        updated_tracker[tracker_key]['last_seen_up'] = None
+                    target_section['first_up_timestamp'] = None
+                    updated_tracker[tracker_key]['first_up_timestamp'] = None
+                
+                updated_tracker[tracker_key]['current_status'] = new_status
 
             if key == "Traffic":
                 if idx < len(lines):
@@ -329,8 +421,25 @@ def parse_rnstatus(output, current_uptime_tracker):
     return sections, updated_tracker
 
 def create_status_card(section, info):
-    """Create HTML for a status card."""
+    """Create HTML for a status card.
+
+    Args:
+        section (str): The section name.
+        info (dict): The interface information.
+
+    Returns:
+        str: The HTML for the status card.
+    """
     status_class = 'status-up' if info['status'] == 'Up' else 'status-down'
+
+    card_title = info['name']
+    address_value = None
+
+    if '/' in info['name']:
+        parts = info['name'].split('/', 1)
+        card_title = parts[0]
+        if len(parts) > 1:
+            address_value = parts[1]
 
     uptime_html = ''
     if info.get('first_up_timestamp'):
@@ -351,12 +460,18 @@ def create_status_card(section, info):
             </div>
         """
 
-    details_html = ''
+    details_html_parts = []
+    if address_value:
+        details_html_parts.append(
+            f'<div class="detail-row"><span class="detail-label">Address</span><span class="detail-value">{address_value}</span></div>'
+        )
+
     if info.get('details'):
-        details_html = ''.join(
+        details_html_parts.extend(
             f'<div class="detail-row"><span class="detail-label">{key}</span><span class="detail-value">{value}</span></div>'
             for key, value in info['details'].items()
         )
+    details_html = ''.join(details_html_parts)
 
     buttons_html = ''
     if info['section_type'] == 'TCPInterface':
@@ -379,7 +494,7 @@ def create_status_card(section, info):
             <div class="card-content">
                 <h2>
                     <span class="status-indicator {status_class}"></span>
-                    {info['name']}
+                    {card_title}
                 </h2>
                 {uptime_html}
                 {details_html}
@@ -388,7 +503,14 @@ def create_status_card(section, info):
     """
 
 def format_duration(seconds):
-    """Format duration in seconds to human readable string."""
+    """Format duration in seconds to human readable string.
+
+    Args:
+        seconds (int): Duration in seconds.
+
+    Returns:
+        str: Human-readable duration string.
+    """
     if seconds <= 0:
         return 'N/A'
 
@@ -418,39 +540,69 @@ def index():
 @app.route('/api/status')
 @limiter.limit("10 per minute")
 def status():
-    """Return the current status as HTML via an API endpoint."""
-    data = get_status_data_with_caching()
-    if data.get('error'):
-        return f'<div class="status-card error-card"><div class="error-message">{data["error"]}</div></div>'
+    """Return the current status as HTML or JSON via an API endpoint."""
+    data_payload = get_status_data_with_caching()
+
+    if request.accept_mimetypes.accept_json and \
+       not request.accept_mimetypes.accept_html:
+        return jsonify(data_payload)
+
+    if 'error' in data_payload['data'] or 'warning' in data_payload['data']:
+        error_or_warning_key = 'error' if 'error' in data_payload['data'] else 'warning'
+        message = data_payload['data'][error_or_warning_key]
+        return f'<div class="status-card error-card"><div class="error-message">{message}</div></div>'
 
     cards_html = ''
-    for section, info in data['data'].items():
+    for section, info in data_payload['data'].items():
         if section not in IGNORE_SECTIONS:
             cards_html += create_status_card(section, info)
-
-    return cards_html
+    
+    return cards_html if cards_html else '<div class="status-card error-card"><div class="error-message">No interfaces found or rnstatus output was empty.</div></div>'
 
 @app.route('/api/search')
 @limiter.limit("10 per minute")
 def search():
-    """Search interfaces and return matching cards."""
+    """Search interfaces and return matching cards as HTML or JSON."""
     query = request.args.get('q', '').lower()
-    data = get_status_data_with_caching()
+    data_payload = get_status_data_with_caching()
 
-    if data.get('error'):
-        return f'<div class="status-card error-card"><div class="error-message">{data["error"]}</div></div>'
+    if 'error' in data_payload['data'] or 'warning' in data_payload['data']:
+        if request.accept_mimetypes.accept_json and \
+           not request.accept_mimetypes.accept_html:
+            return jsonify(data_payload)
+        else:
+            error_or_warning_key = 'error' if 'error' in data_payload['data'] else 'warning'
+            message = data_payload['data'][error_or_warning_key]
+            return f'<div class="status-card error-card"><div class="error-message">{message}</div></div>'
 
-    cards_html = ''
-    for section, info in data['data'].items():
+    filtered_data = {}
+    for section, info in data_payload['data'].items():
         if section in IGNORE_SECTIONS:
             continue
+        if not isinstance(info, dict):
+            continue 
 
         if (query in section.lower() or
-            query in info['name'].lower() or
+            query in info.get('name', '').lower() or
             any(query in str(v).lower() for v in info.get('details', {}).values())):
-            cards_html += create_status_card(section, info)
+            filtered_data[section] = info
 
-    return cards_html or '<div class="status-card error-card"><div class="error-message">No matching interfaces found</div></div>'
+    if request.accept_mimetypes.accept_json and \
+       not request.accept_mimetypes.accept_html:
+        return jsonify({
+            'timestamp': data_payload['timestamp'],
+            'data': filtered_data,
+            'debug': data_payload['debug'],
+            'query': query
+        })
+    else:
+        cards_html = ''
+        if filtered_data:
+            for section, info in filtered_data.items():
+                cards_html += create_status_card(section, info)
+        else:
+            cards_html = '<div class="status-card error-card"><div class="error-message">No matching interfaces found for your query.</div></div>'
+        return cards_html
 
 @app.route('/api/export/<interface_name>')
 @limiter.limit("10 per minute")
@@ -518,6 +670,7 @@ def export_all():
 def stream_status_events():
     """Streams status updates using Server-Sent Events (SSE)."""
     def event_stream_generator():
+        """Generates a stream of server-sent events."""
         last_sent_timestamp = 0
         try:
             while True:
@@ -585,16 +738,20 @@ def main():
     import gunicorn.app.base
 
     class StandaloneApplication(gunicorn.app.base.BaseApplication):
+        """Gunicorn application."""
         def __init__(self, app, options=None):
+            """Initialize the application."""
             self.options = options or {}
             self.application = app
             super().__init__()
 
         def load_config(self):
+            """Load the configuration."""
             for key, value in self.options.items():
                 self.cfg.set(key, value)
 
         def load(self):
+            """Load the application."""
             return self.application
 
     temp_dir = tempfile.mkdtemp(prefix='gunicorn_')
