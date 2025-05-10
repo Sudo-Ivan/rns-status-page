@@ -13,6 +13,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY rns_status_page ./rns_status_page/
 COPY setup.py .
 
+RUN mkdir -p /home/nonroot/.reticulum
+COPY config /home/nonroot/.reticulum/config
+
 FROM cgr.dev/chainguard/python:latest
 
 WORKDIR /app
@@ -20,10 +23,13 @@ WORKDIR /app
 COPY --from=builder /app/venv /app/venv
 COPY --from=builder /app/rns_status_page ./rns_status_page/
 COPY --from=builder /app/setup.py .
-
-COPY --chown=65532:65532 config /home/nonroot/.reticulum/config
+COPY --from=builder --chown=nonroot:nonroot /home/nonroot/.reticulum /home/nonroot/.reticulum
 
 ENV PATH="/app/venv/bin:$PATH"
+
+USER nonroot
+
+VOLUME /home/nonroot/.reticulum
 
 EXPOSE 5000
 
