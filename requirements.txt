@@ -1,0 +1,6 @@
+flask
+rns
+python-dotenv
+gunicorn
+flask-talisman
+flask-limiter

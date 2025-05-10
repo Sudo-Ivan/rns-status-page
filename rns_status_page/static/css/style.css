@@ -1,0 +1,316 @@
+:root {
+    --bg-color: #1a1a1a;
+    --text-color: #e0e0e0;
+    --card-bg: #2d2d2d;
+    --up-color: #4caf50;
+    --down-color: #f44336;
+    --border-color: #404040;
+    --error-bg: #442222;
+    --hover-color: rgba(255, 255, 255, 0.1);
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 20px;
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.search-container {
+    margin-top: 15px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: center;
+}
+
+#search-box {
+    padding: 10px 15px;
+    width: 100%;
+    max-width: 500px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    background-color: var(--card-bg);
+    color: var(--text-color);
+    font-size: 1em;
+    box-sizing: border-box;
+}
+
+#search-box::placeholder {
+    color: #888;
+}
+
+#search-box:focus {
+    outline: none;
+    border-color: var(--up-color);
+    box-shadow: 0 0 5px var(--up-color);
+}
+
+.card-export-button {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    z-index: 3;
+}
+
+.status-card:hover .card-export-button {
+    opacity: 1;
+}
+
+.export-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 4px;
+    color: var(--text-color);
+    transition: background-color 0.2s ease;
+}
+
+.export-button:hover {
+    background-color: var(--hover-color);
+}
+
+.export-button svg {
+    display: block;
+}
+
+.search-container .export-button {
+    margin-left: 10px;
+    padding: 8px;
+    border-radius: 4px;
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+}
+
+.search-container .export-button:hover {
+    background-color: var(--hover-color);
+}
+
+.htmx-indicator {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1000;
+}
+
+.htmx-request .htmx-indicator {
+    display: block;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid var(--up-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.status-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.status-card {
+    background-color: var(--card-bg);
+    border-radius: 8px;
+    padding: 20px;
+    border: 1px solid var(--border-color);
+    max-width: 450px;
+    position: relative;
+    min-height: 100px;
+}
+
+.status-card .card-content {
+    position: relative;
+    z-index: 0;
+}
+
+.status-card .interface-code {
+    z-index: 2;
+}
+
+.error-card {
+    background-color: var(--error-bg);
+    border-color: var(--down-color);
+}
+
+.status-card h2 {
+    margin-top: 0;
+    color: var(--text-color);
+    font-size: 1.2em;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.status-indicator {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 8px;
+}
+
+.status-up {
+    background-color: var(--up-color);
+}
+
+.status-down {
+    background-color: var(--down-color);
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    margin: 8px 0;
+    gap: 10px;
+}
+
+.detail-label {
+    color: #888;
+    white-space: nowrap;
+}
+
+.detail-value {
+    font-family: monospace;
+    white-space: pre-wrap;
+    word-break: break-word;
+    text-align: right;
+}
+
+.last-updated {
+    text-align: center;
+    color: #888;
+    font-size: 0.9em;
+    margin-top: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+}
+
+.last-updated .version {
+    color: var(--up-color);
+    font-weight: bold;
+}
+
+.last-updated .logging-info {
+    color: #666;
+    font-style: italic;
+}
+
+.error-message {
+    color: #ff6b6b;
+    font-family: monospace;
+    white-space: pre-wrap;
+    margin: 10px 0;
+}
+
+.debug-info {
+    font-size: 0.8em;
+    color: #888;
+    margin-top: 5px;
+}
+
+.status-ok {
+    color: var(--up-color);
+}
+
+.status-error-text {
+    color: var(--down-color);
+    font-weight: bold;
+}
+
+.uptime-info .detail-label {
+}
+
+.uptime-info .detail-value {
+}
+
+.interface-code {
+    display: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    margin: 0;
+    padding: 20px;
+    background: #1e1e1e;
+    border-radius: 8px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.9em;
+    color: #d4d4d4;
+    white-space: pre;
+    overflow-x: auto;
+    z-index: 2;
+}
+
+.interface-code.visible {
+    display: block;
+}
+
+.interface-code .code-line {
+    line-height: 1.2;
+    margin: 0;
+    padding: 0;
+}
+
+.interface-code .code-key {
+    color: #9cdcfe;
+}
+
+.interface-code .code-value {
+    color: #ce9178;
+}
+
+.interface-code .code-section {
+    color: #d7ba7d;
+}
+
+.card-code-button {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    z-index: 3;
+}
+
+.status-card:hover .card-code-button {
+    opacity: 1;
+}
+
+@media (max-width: 600px) {
+    .status-grid {
+        grid-template-columns: 1fr;
+    }
+}

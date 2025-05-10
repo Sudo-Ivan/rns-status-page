@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reticulum Status</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="{{ url_for('static', filename='vendor/htmx.min.js') }}"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Reticulum Network Status</h1>
+            <div class="search-container">
+                <input type="search" 
+                       id="search-box" 
+                       placeholder="Search interfaces (e.g., TCP, RNS Testnet)..."
+                       hx-get="/api/search"
+                       hx-trigger="input changed delay:500ms, search"
+                       hx-target="#status-grid"
+                       hx-indicator=".htmx-indicator"
+                       name="q">
+                <a href="/api/export-all"
+                   id="export-all"
+                   class="export-button"
+                   title="Export all interfaces"
+                   download="all_interfaces.txt">
+                    <svg viewBox="0 0 24 24" width="24" height="24">
+                        <path fill="currentColor" d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                    </svg>
+                </a>
+            </div>
+        </div>
+        <div id="status-grid" 
+             class="status-grid"
+             hx-get="/api/status"
+             hx-trigger="load, every 5s"
+             hx-swap="innerHTML">
+            <!-- Status cards will be inserted here by HTMX -->
+        </div>
+        <div id="last-updated" class="last-updated">
+            <span id="update-time">Loading status...</span>
+            <span class="footer-separator">|</span>
+            <span class="version">v1.0</span>
+            <span class="footer-separator">|</span>
+            <span class="logging-info">Requests are not logged</span>
+            <span class="footer-separator">|</span>
+            <span class="created-by">Created by Ivan</span>
+        </div>
+        <div class="htmx-indicator">
+            <div class="spinner"></div>
+        </div>
+    </div>
+    <script>
+        document.body.addEventListener('htmx:afterSwap', function(evt) {
+            if (evt.detail.target.id === 'status-grid') {
+                const now = new Date();
+                document.getElementById('update-time').textContent = 
+                    `Last updated: ${now.toLocaleTimeString()}`;
+            }
+        });
+    </script>
+</body>
+</html> 

@@ -1,0 +1,4 @@
+include README.md
+include requirements.txt
+recursive-include rns_status_page/templates *
+recursive-include rns_status_page/static *
