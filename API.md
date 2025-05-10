@@ -4,7 +4,7 @@ The RNS Status Page provides several API endpoints that can be used externally t
 
 Public endpoints:
 
-`rnstatus.quad4.io`
+`rstatus.quad4.io`
 
 ### Get All Status Cards
 

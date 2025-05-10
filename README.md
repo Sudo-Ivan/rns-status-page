@@ -2,7 +2,7 @@
 
 [Reticulum](https://reticulum.network/) status page using `rnstatus` and `rsnd` from the utilities. Built using Flask, Gunicorn, and HTMX.
 
-Request to Add or Remove an Interface: Open a [Issue](https://github.com/Sudo-Ivan/rns-status-page/issues/new) or message me on Reticulum `c0cdcb64499e4f0d544ff87c9d5e2485` this only applies to my instance at rnstatus.quad4.io
+Request to Add or Remove an Interface: Open a [Issue](https://github.com/Sudo-Ivan/rns-status-page/issues/new) or message me on Reticulum `c0cdcb64499e4f0d544ff87c9d5e2485` this only applies to my instance at rstatus.quad4.io
 
 ## Install
 
@@ -36,6 +36,7 @@ replace `docker` with `podman` if you are using podman.
 - [ ] Filter by reliability, uptime.
 - [ ] Micron Status Page.
 - [ ] Optional I2P, yggdrasil support.
+- [ ] non-root Dockerfile
 
 ## API
 
