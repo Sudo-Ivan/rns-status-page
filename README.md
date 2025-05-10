@@ -27,7 +27,8 @@ WIP
 - [ ] More tracking and stats.
 - [ ] Filter by reliability, uptime.
 - [ ] Dockerfile/Compose files.
-- [ ] Nomadnet Page.
+- [ ] Micron Status Page.
+- [ ] Optional I2P, yggdrasil support.
 
 ## API
 
@@ -37,6 +38,7 @@ Read the [API.md](API.md) file for more information on api usage.
 
 1. starts `rnsd` in a seperate thread.
 2. uses `rnstatus` to get the status of the Reticulum network using provided config file. 
+3. Flask and Gunicorn are used to serve the status page and API.
 
 ## Contributing
 
