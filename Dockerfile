@@ -1,3 +1,5 @@
+# Note: If chainguard images stop working, replace with Alpine variants. 
+
 FROM cgr.dev/chainguard/python:latest-dev AS builder
 
 WORKDIR /app
@@ -24,5 +26,10 @@ COPY --chown=65532:65532 config /home/nonroot/.reticulum/config
 ENV PATH="/app/venv/bin:$PATH"
 
 EXPOSE 5000
+
+LABEL org.opencontainers.image.source="https://github.com/Sudo-Ivan/rns-status-page"
+LABEL org.opencontainers.image.description="Reticulum network status page."
+LABEL org.opencontainers.image.licenses="MIT"
+LABEL org.opencontainers.image.authors="Sudo-Ivan"
 
 ENTRYPOINT ["python", "rns_status_page/status_page.py"]
