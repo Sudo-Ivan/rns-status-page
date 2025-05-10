@@ -1,35 +1,15 @@
-# Note: If chainguard images stop working, replace with Alpine variants. 
-
-FROM cgr.dev/chainguard/python:latest-dev AS builder
+FROM python:3.13-alpine
 
 WORKDIR /app
-
-RUN python -m venv venv
-ENV PATH="/app/venv/bin:$PATH"
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY rns_status_page ./rns_status_page/
 COPY setup.py .
+COPY config /root/.reticulum/config
 
-RUN mkdir -p /home/nonroot/.reticulum
-COPY config /home/nonroot/.reticulum/config
-
-FROM cgr.dev/chainguard/python:latest
-
-WORKDIR /app
-
-COPY --from=builder /app/venv /app/venv
-COPY --from=builder /app/rns_status_page ./rns_status_page/
-COPY --from=builder /app/setup.py .
-COPY --from=builder --chown=nonroot:nonroot /home/nonroot/.reticulum /home/nonroot/.reticulum
-
-ENV PATH="/app/venv/bin:$PATH"
-
-USER nonroot
-
-VOLUME /home/nonroot/.reticulum
+VOLUME /root/.reticulum
 
 EXPOSE 5000
 
