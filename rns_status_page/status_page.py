@@ -215,7 +215,7 @@ def get_rnstatus_from_command():
         if not rnstatus_path:
             return "Error: rnstatus command not found in PATH"
 
-        result = subprocess.run([rnstatus_path],  # nosec B603
+        result = subprocess.run([rnstatus_path, '-A'],  # nosec B603
                               capture_output=True,
                               text=True,
                               timeout=30,
@@ -374,10 +374,23 @@ def parse_rnstatus(output, current_uptime_tracker):
                     updated_tracker[tracker_key]['last_seen_up'] = previous_record.get('last_seen_up')
 
         elif current_section_title and not is_current_section_ignored and ':' in line:
-            key, value_part = line.split(':', 1)
-            key = key.strip()
+            key_part, value_part = line.split(':', 1)
+            key = key_part.strip()
             value = value_part.strip()
 
+            if key == "Traffic":
+                if idx < len(lines):
+                    next_line_content = lines[idx]
+                    if next_line_content and next_line_content[0].isspace() and "↓" in next_line_content:
+                        value += f"\n{next_line_content.strip()}"
+                        idx += 1
+            elif key == "Announces":
+                if idx < len(lines):
+                    next_line_content = lines[idx] 
+                    if next_line_content and next_line_content[0].isspace() and "↓" in next_line_content:
+                        value += f"\n{next_line_content.strip()}"
+                        idx += 1
+            
             if key == "Status":
                 new_status = 'Up' if 'Up' in value else 'Down'
                 target_section = sections[current_section_title]
@@ -416,13 +429,6 @@ def parse_rnstatus(output, current_uptime_tracker):
                     updated_tracker[tracker_key]['first_up_timestamp'] = None
 
                 updated_tracker[tracker_key]['current_status'] = new_status
-
-            if key == "Traffic":
-                if idx < len(lines):
-                    next_line_stripped = lines[idx].strip()
-                    if next_line_stripped.startswith("↓"):
-                        value += f"\n{next_line_stripped}"
-                        idx += 1
 
             sections[current_section_title]['details'][key] = value
 
@@ -472,14 +478,25 @@ def create_status_card(section, info):
     details_html_parts = []
     if address_value:
         details_html_parts.append(
-            f'<div class="detail-row"><span class="detail-label">Address</span><span class="detail-value">{address_value}</span></div>'
+            f'<div class="detail-row"><span class="detail-label">Address</span><span class="detail-value" title="{address_value}">{address_value}</span></div>'
         )
 
     if info.get('details'):
-        details_html_parts.extend(
-            f'<div class="detail-row"><span class="detail-label">{key}</span><span class="detail-value">{value}</span></div>'
-            for key, value in info['details'].items()
-        )
+        for key, value in info['details'].items():
+            if (key == "Announces" or key == "Traffic") and "\n" in value:
+                parts = value.split("\n")
+                if len(parts) >= 1:
+                    details_html_parts.append(
+                        f'<div class="detail-row"><span class="detail-label">{key}</span><span class="detail-value">{parts[0]}</span></div>'
+                    )
+                if len(parts) >= 2:
+                    details_html_parts.append(
+                        f'<div class="detail-row"><span class="detail-label">&nbsp;</span><span class="detail-value">{parts[1]}</span></div>'
+                    )
+            else:
+                details_html_parts.append(
+                    f'<div class="detail-row"><span class="detail-label">{key}</span><span class="detail-value">{value}</span></div>'
+                )
     details_html = ''.join(details_html_parts)
 
     buttons_html = ''
@@ -501,7 +518,7 @@ def create_status_card(section, info):
         <div class="status-card" data-section-name="{info['section_type'].lower()}" data-interface-name="{info['name'].lower()}">
             {buttons_html}
             <div class="card-content">
-                <h2>
+                <h2 title="{info['name']}">
                     <span class="status-indicator {status_class}"></span>
                     {card_title}
                 </h2>
