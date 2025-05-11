@@ -19,6 +19,7 @@ from flask import Flask, render_template, jsonify, Response, request
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_talisman import Talisman
+from flask_cors import CORS
 
 logging.basicConfig(
     level=logging.INFO,
@@ -34,10 +35,26 @@ load_dotenv()
 
 app = Flask(__name__)
 
+# Configure CORS
+CORS(app, resources={
+    r"/api/*": {
+        "origins": ["*"],
+        "methods": ["GET", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Accept"],
+        "max_age": 3600
+    },
+    r"/events": {
+        "origins": ["*"],
+        "methods": ["GET", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Accept"],
+        "max_age": 3600
+    }
+})
+
 Talisman(app,
     content_security_policy={
         'default-src': "'self'",
-        'script-src': "'self' 'unsafe-inline' https://unpkg.com",
+        'script-src': "'self' 'unsafe-inline'",
         'style-src': "'self' 'unsafe-inline'",
         'img-src': "'self' data:",
         'font-src': "'self'",
