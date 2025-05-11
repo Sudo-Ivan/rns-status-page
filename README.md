@@ -98,6 +98,7 @@ docker exec rns-status-page rnstatus # or docker exec <your-container-name> rnst
 - [ ] Add API security tests.
 - [ ] Memory and performance optimization.
 - [ ] History endpoint for changes over time.
+- [ ] Sqlite database instead of json for uptime and history.
 - [ ] Dedicated settings file to configure various things.
 
 ## API
