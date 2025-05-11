@@ -92,6 +92,7 @@ Should display interface stats.
 ## To-Do
 
 - [ ] More tracking over time and stats
+- [ ] Integrate more with the Reticulum network (Data sharing for more reliable stats, usage by LXMF bots, API over Reticulum)
 - [ ] Stale server detection (node is up but no announces being received/sent)
 - [ ] Filter by reliability and uptime
 - [ ] Micron Status Page
