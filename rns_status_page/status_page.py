@@ -80,7 +80,7 @@ Talisman(
 limiter = Limiter(
     app=app,
     key_func=get_remote_address,
-    default_limits=["200 per day", "50 per hour"],
+    default_limits=["1000 per day", "300 per hour"],
     storage_uri="memory://",
 )
 
@@ -940,6 +940,8 @@ def status():
     if "error" in data_payload["data"] or "warning" in data_payload["data"]:
         error_or_warning_key = "error" if "error" in data_payload["data"] else "warning"
         message = sanitize_html(data_payload["data"][error_or_warning_key])
+        if "connection refused" in message.lower():
+            return '<div class="status-card loading-card"><div class="loading-message"><div class="spinner"></div><p>Initializing connection to Reticulum network...</p><p class="loading-subtext">This may take a few moments while the network connection is established.</p></div></div>'
         return f'<div class="status-card error-card"><div class="error-message">{message}</div></div>'
 
     cards_html = ""
@@ -1164,15 +1166,6 @@ def main():
     logger.info("Attempting initial population of status cache...")
     get_and_cache_rnstatus_data()
 
-    is_available, msg = check_rns_library()
-    if not is_available:
-        logger.error(f"RNS library not available or not functional: {msg}")
-        if managed_rnsd:
-            stop_rnsd()
-        sys.exit(1)
-    else:
-        logger.info(f"RNS library check passed: {msg}")
-
     import gunicorn.app.base
 
     class StandaloneApplication(gunicorn.app.base.BaseApplication):
@@ -1238,71 +1231,6 @@ def main():
         if _cache["rns_instance"] is not None:
             _cache["rns_instance"] = None
             logger.info("Cleared local RNS instance reference.")
-
-
-def check_rns_library():
-    """Check if the RNS library is available and if the cached instance is valid.
-
-    Returns:
-        tuple: (bool, str) indicating whether the library is available and a message.
-
-    """
-    try:
-        import RNS  # noqa F401 - We are just checking import
-    except ImportError:
-        logger.error("RNS library (Python package) not found. Please install it.")
-        return False, "RNS library (python package) not found. Please install it."
-
-    with _cache["lock"]:
-        rns_instance = _cache.get("rns_instance")
-        initial_data = _cache.get("data")
-
-        if rns_instance is not None:
-            if initial_data and not (
-                "error" in initial_data or "warning" in initial_data
-            ):
-                logger.info(
-                    "RNS library check: RNS instance is active and initial data fetch was successful."
-                )
-                return (
-                    True,
-                    "RNS instance is active and initial data fetch was successful.",
-                )
-            elif initial_data and ("error" in initial_data):
-                error_message = initial_data["error"]
-                logger.warning(
-                    f"RNS library check: RNS instance exists but initial data fetch reported an error: {error_message}"
-                )
-                return False, f"RNS active but unusable for stats: {error_message}"
-            elif initial_data and ("warning" in initial_data):
-                logger.info(
-                    f"RNS library check: RNS instance exists but initial data fetch reported a warning: {initial_data['warning']}"
-                )
-                return (
-                    True,
-                    f"RNS active, initial data fetch warning: {initial_data['warning']}",
-                )
-            else:
-                logger.info(
-                    "RNS library check: RNS instance exists but initial data state is indeterminate."
-                )
-                return (
-                    True,
-                    "RNS instance is active but initial data state indeterminate.",
-                )
-
-        else:
-            failure_reason = (
-                "Failed to initialize or connect to RNS instance during startup."
-            )
-            if initial_data and "error" in initial_data:
-                failure_reason = initial_data["error"]
-            logger.error(
-                f"RNS library check: RNS instance is not available. Reason: {failure_reason}"
-            )
-            return False, f"RNS instance not available: {failure_reason}"
-
-    return False, "RNS library check inconclusive."
 
 
 if __name__ == "__main__":
