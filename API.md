@@ -127,3 +127,11 @@ A Server-Sent Events (SSE) stream that pushes updates whenever the status data c
   ```bash
   curl -N https://rstatus.quad4.io/events
   ```
+
+### Health Check
+
+A simple health check endpoint to ensure the server is running.
+
+- **Endpoint:** `/health`
+- **Method:** `GET`
+- **Returns:** `application/json`
