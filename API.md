@@ -18,13 +18,13 @@ Retrieves the current status of all interfaces. Supports both HTML and JSON outp
 - **Example (HTML):**
 
   ```bash
-  curl https://rnstatus.quad4.io/api/status
+  curl https://rstatus.quad4.io/api/status
   ```
 
 - **Example (JSON):**
 
   ```bash
-  curl -H "Accept: application/json" https://rnstatus.quad4.io/api/status
+  curl -H "Accept: application/json" https://rstatus.quad4.io/api/status
   ```
 
 - **JSON Response Structure:**
@@ -65,13 +65,13 @@ Searches for interfaces matching a query string. Supports both HTML and JSON out
 - **Example (HTML):**
 
   ```bash
-  curl "https://rnstatus.quad4.io/api/search?q=TCP"
+  curl "https://rstatus.quad4.io/api/search?q=TCP"
   ```
 
 - **Example (JSON):**
 
   ```bash
-  curl -H "Accept: application/json" "https://rnstatus.quad4.io/api/search?q=TCP"
+  curl -H "Accept: application/json" "https://rstatus.quad4.io/api/search?q=TCP"
   ```
 
 - **JSON Response Structure (similar to /api/status, but `data` is filtered and includes a `query` field):**
@@ -99,7 +99,7 @@ Exports the configuration for a specific TCP interface as a downloadable text fi
 - **Example (for an interface named `mypeer/192.168.1.100:4242`):**
 
   ```bash
-  curl https://rnstatus.quad4.io/api/export/mypeer_192.168.1.100:4242 -o mypeer_config.txt
+  curl https://rstatus.quad4.io/api/export/mypeer_192.168.1.100:4242 -o mypeer_config.txt
   ```
 
 ### Export All Interface Configurations
@@ -112,7 +112,7 @@ Exports configurations for all TCP interfaces as a single downloadable text file
 - **Example:**
 
   ```bash
-  curl https://rnstatus.quad4.io/api/export-all -o all_interfaces.txt
+  curl https://rstatus.quad4.io/api/export-all -o all_interfaces.txt
   ```
 
 ### Real-time Status Events (SSE)
@@ -125,18 +125,5 @@ A Server-Sent Events (SSE) stream that pushes updates whenever the status data c
 - **Example (using `curl` or a browser JavaScript EventSource):**
 
   ```bash
-  curl -N https://rnstatus.quad4.io/events
-  ```
-
-### Debug Information
-
-Provides JSON output with debugging information about the server environment.
-
-- **Endpoint:** `/api/debug`
-- **Method:** `GET`
-- **Returns:** `application/json`
-- **Example:**
-
-  ```bash
-  curl https://rnstatus.quad4.io/api/debug
+  curl -N https://rstatus.quad4.io/events
   ```
