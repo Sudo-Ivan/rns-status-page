@@ -90,7 +90,6 @@ docker exec rns-status-page rnstatus # or docker exec <your-container-name> rnst
 
 - [ ] More tracking over time and stats.
 - [ ] Stale server detection (node is up but no announces being recieved/sent).
-- [ ] Configuration for the status page and API.
 - [ ] Filter by reliability and uptime.
 - [ ] Micron Status Page.
 - [ ] Optional I2P, yggdrasil support (in docker).
