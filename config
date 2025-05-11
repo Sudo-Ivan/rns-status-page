@@ -20,18 +20,13 @@
   [[Default Interface]]
     type = AutoInterface
     enabled = No
-    name = Default Interface
-    selected_interface_mode = 1
-    configured_bitrate = None
 
   [[Quad4]]
     type = TCPClientInterface
     interface_enabled = true
     target_host = rns.quad4.io
     target_port = 4242
-    name = quad4
-    selected_interface_mode = 1
-    configured_bitrate = None
+
   [[RNS Testnet BetweenTheBorders]]
     type = TCPClientInterface
     interface_enabled = true
@@ -157,3 +152,11 @@
     enabled = true
     target_host = rothbard.lab.networks.deavmi.assigned.network
     target_port = 4242
+
+  [[RNS Testnet Dublin]]
+    type = TCPClientInterface
+    enabled = yes
+    target_host = dublin.connect.reticulum.network
+    target_port = 4965
+
+  
