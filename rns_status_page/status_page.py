@@ -816,24 +816,10 @@ def stream_status_events():
 
     return Response(event_stream_generator(), mimetype='text/event-stream')
 
-@app.route('/api/debug')
-@limiter.limit("5 per minute")
-def debug_info():
-    """Debug endpoint that returns system information."""
-    rnstatus_installed, rnstatus_msg = check_rnstatus_installation()
-
-    return jsonify({
-        'timestamp': datetime.now().isoformat(),
-        'environment': {
-            'python_version': os.sys.version,
-            'flask_version': Flask.__version__,
-            'hostname': os.uname().nodename if hasattr(os, 'uname') else 'unknown',
-            'working_directory': os.getcwd(),
-            'rnstatus_installed': rnstatus_installed,
-            'rnstatus_message': rnstatus_msg
-        },
-        'log_level': logging.getLevelName(logger.getEffectiveLevel())
-    })
+@app.route('/health')
+def health_check():
+    """Return a simple health check."""
+    return jsonify({"status": "ok"})
 
 def main():
     """Start the Gunicorn server."""
