@@ -33,10 +33,12 @@ replace `docker` with `podman` if you are using podman.
 ## To-Do
 
 - [ ] More tracking and stats.
+- [ ] Configuration for the status page and API.
 - [ ] Filter by reliability, uptime.
 - [ ] Micron Status Page.
 - [ ] Optional I2P, yggdrasil support.
 - [ ] non-root Dockerfile
+- [ ] Convert announces recieving/sent into a more readable format.
 
 ## API
 
