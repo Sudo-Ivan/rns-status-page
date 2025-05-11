@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  rns-status-page:
+    image: ghcr.io/sudo-ivan/rns-status-page:latest
+    container_name: rns-status-page
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./uptime.json:/home/nonroot/uptime.json
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped 
