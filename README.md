@@ -50,6 +50,7 @@ docker exec rns-status-page rnstatus or docker exec <your-container-name> rnstat
 - [ ] Optional I2P, yggdrasil support.
 - [ ] non-root Dockerfile
 - [ ] Convert announces recieving/sent into a more readable format.
+- [ ] Add health endpoint.
 
 ## API
 
