@@ -32,6 +32,8 @@ rns-status-page = "rns_status_page.status_page:main"
 
 [tool.poetry.group.dev.dependencies]
 interrogate = "^1.7.0"
+ruff = "^0.11.9"
+bandit = "^1.8.3"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
