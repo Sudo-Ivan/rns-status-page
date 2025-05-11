@@ -5,20 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reticulum Network Status</title>
     
+    <!-- Security Headers -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'">
+    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Permissions-Policy" content="browsing-topics=()">
+    
     <!-- SEO Meta Tags -->
-    <meta name="description" content="{{ meta_description }}">
+    <meta name="description" content="{{ meta_description|e }}">
     <meta name="keywords" content="reticulum, network, status, monitoring">
     
     <!-- Open Graph Meta Tags -->
     <meta property="og:title" content="Reticulum Network Status">
-    <meta property="og:description" content="{{ meta_description }}">
+    <meta property="og:description" content="{{ meta_description|e }}">
     <meta property="og:image" content="{{ url_for('static', filename='og.png', _external=True) }}">
     <meta property="og:type" content="website">
     
     <!-- Twitter Card Meta Tags -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Reticulum Network Status">
-    <meta name="twitter:description" content="{{ meta_description }}">
+    <meta name="twitter:description" content="{{ meta_description|e }}">
     <meta name="twitter:image" content="{{ url_for('static', filename='og.png', _external=True) }}">
     
     <!-- Favicon -->
@@ -26,7 +32,7 @@
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='favicon.png') }}">
     
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <script src="{{ url_for('static', filename='vendor/htmx.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='vendor/htmx.min.js') }}" integrity="sha384-{{ htmx_integrity }}" crossorigin="anonymous"></script>
 </head>
 <body>
     <div class="container">
@@ -40,7 +46,9 @@
                        hx-trigger="input changed delay:500ms, search"
                        hx-target="#status-grid"
                        hx-indicator=".htmx-indicator"
-                       name="q">
+                       name="q"
+                       pattern="[a-zA-Z0-9\s\-_]+"
+                       title="Only alphanumeric characters, spaces, hyphens and underscores are allowed">
                 <a href="/api/export-all"
                    id="export-all"
                    class="export-button"
@@ -52,11 +60,11 @@
                 </a>
             </div>
             <div class="interface-counts">
-                <span>Up: {{ up_count }}</span>
+                <span>Up: {{ up_count|e }}</span>
                 <span class="count-separator">|</span>
-                <span>Down: {{ down_count }}</span>
+                <span>Down: {{ down_count|e }}</span>
                 <span class="count-separator">|</span>
-                <span>Total: {{ total_count }}</span>
+                <span>Total: {{ total_count|e }}</span>
             </div>
         </div>
         <div id="status-grid" 

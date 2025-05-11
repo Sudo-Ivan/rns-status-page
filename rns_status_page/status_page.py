@@ -12,10 +12,14 @@ import sys
 import tempfile
 import threading
 import time
+import hashlib
+import base64
 from datetime import datetime
 
+import bleach
 from dotenv import load_dotenv
 from flask import Flask, render_template, jsonify, Response, request
+from markupsafe import escape
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_talisman import Talisman
@@ -460,6 +464,19 @@ def parse_rnstatus(output, current_uptime_tracker):
 
     return sections, updated_tracker
 
+def sanitize_html(text):
+    """Sanitize HTML content to prevent XSS attacks.
+    
+    Args:
+        text (str): The text to sanitize.
+        
+    Returns:
+        str: Sanitized text.
+    """
+    if not isinstance(text, str):
+        return str(text)
+    return bleach.clean(text, strip=True)
+
 def create_status_card(section, info):
     """Create HTML for a status card.
 
@@ -473,14 +490,14 @@ def create_status_card(section, info):
     """
     status_class = 'status-up' if info['status'] == 'Up' else 'status-down'
 
-    card_title = info['name']
+    card_title = sanitize_html(info['name'])
     address_value = None
 
     if '/' in info['name']:
         parts = info['name'].split('/', 1)
-        card_title = parts[0]
+        card_title = sanitize_html(parts[0])
         if len(parts) > 1:
-            address_value = parts[1]
+            address_value = sanitize_html(parts[1])
 
     uptime_html = ''
     if info.get('first_up_timestamp'):
@@ -490,7 +507,7 @@ def create_status_card(section, info):
         uptime_html = f"""
             <div class="detail-row uptime-info">
                 <span class="detail-label">Uptime</span>
-                <span class="detail-value">{format_duration(duration_seconds)} (since {start_time.strftime('%Y-%m-%d %H:%M:%S')})</span>
+                <span class="detail-value">{sanitize_html(format_duration(duration_seconds))} (since {sanitize_html(start_time.strftime('%Y-%m-%d %H:%M:%S'))})</span>
             </div>
         """
     elif info['status'] == 'Up':
@@ -504,7 +521,7 @@ def create_status_card(section, info):
     details_html_parts = []
     if address_value:
         details_html_parts.append(
-            f'<div class="detail-row"><span class="detail-label">Address</span><span class="detail-value" title="{address_value}">{address_value}</span></div>'
+            f'<div class="detail-row"><span class="detail-label">Address</span><span class="detail-value" title="{sanitize_html(address_value)}">{sanitize_html(address_value)}</span></div>'
         )
 
     if info.get('details'):
@@ -513,22 +530,22 @@ def create_status_card(section, info):
                 parts = value.split("\n")
                 if len(parts) >= 1:
                     details_html_parts.append(
-                        f'<div class="detail-row"><span class="detail-label">{key}</span><span class="detail-value">{parts[0]}</span></div>'
+                        f'<div class="detail-row"><span class="detail-label">{sanitize_html(key)}</span><span class="detail-value">{sanitize_html(parts[0])}</span></div>'
                     )
                 if len(parts) >= 2:
                     details_html_parts.append(
-                        f'<div class="detail-row"><span class="detail-label">&nbsp;</span><span class="detail-value">{parts[1]}</span></div>'
+                        f'<div class="detail-row"><span class="detail-label">&nbsp;</span><span class="detail-value">{sanitize_html(parts[1])}</span></div>'
                     )
             else:
                 details_html_parts.append(
-                    f'<div class="detail-row"><span class="detail-label">{key}</span><span class="detail-value">{value}</span></div>'
+                    f'<div class="detail-row"><span class="detail-label">{sanitize_html(key)}</span><span class="detail-value">{sanitize_html(value)}</span></div>'
                 )
     details_html = ''.join(details_html_parts)
 
     buttons_html = ''
     if info['section_type'] == 'TCPInterface':
-        export_url = f"/api/export/{info['name'].replace('/', '_')}"
-        suggested_filename_base = info['name'].split('/')[0]
+        export_url = f"/api/export/{sanitize_html(info['name'].replace('/', '_'))}"
+        suggested_filename_base = sanitize_html(info['name'].split('/')[0])
         buttons_html = f"""
             <a href="{export_url}"
                class="card-export-button export-button"
@@ -541,10 +558,10 @@ def create_status_card(section, info):
         """
 
     return f"""
-        <div class="status-card" data-section-name="{info['section_type'].lower()}" data-interface-name="{info['name'].lower()}">
+        <div class="status-card" data-section-name="{sanitize_html(info['section_type'].lower())}" data-interface-name="{sanitize_html(info['name'].lower())}">
             {buttons_html}
             <div class="card-content">
-                <h2 title="{info['name']}">
+                <h2 title="{sanitize_html(info['name'])}">
                     <span class="status-indicator {status_class}"></span>
                     {card_title}
                 </h2>
@@ -607,6 +624,23 @@ def count_interfaces(data):
 
     return up_count, down_count, total_count
 
+def calculate_file_hash(filepath):
+    """Calculate SHA-384 hash of a file.
+    
+    Args:
+        filepath (str): Path to the file.
+        
+    Returns:
+        str: Base64 encoded hash.
+    """
+    try:
+        with open(filepath, 'rb') as f:
+            file_hash = hashlib.sha384(f.read()).digest()
+            return base64.b64encode(file_hash).decode('utf-8')
+    except Exception as e:
+        logger.error(f"Error calculating file hash for {filepath}: {e}")
+        return None
+
 @app.route('/')
 @limiter.exempt
 def index():
@@ -615,12 +649,17 @@ def index():
     up_count, down_count, total_count = count_interfaces(data['data'])
 
     meta_description = f"Reticulum Network Status - Up: {up_count} Down: {down_count} Total: {total_count}"
+    
+    # Calculate HTMX integrity hash
+    htmx_path = os.path.join(app.static_folder, 'vendor', 'htmx.min.js')
+    htmx_integrity = calculate_file_hash(htmx_path)
 
     return render_template('index.html',
                          up_count=up_count,
                          down_count=down_count,
                          total_count=total_count,
-                         meta_description=meta_description)
+                         meta_description=meta_description,
+                         htmx_integrity=htmx_integrity)
 
 @app.route('/api/status')
 @limiter.limit("10 per minute")
@@ -634,7 +673,7 @@ def status():
 
     if 'error' in data_payload['data'] or 'warning' in data_payload['data']:
         error_or_warning_key = 'error' if 'error' in data_payload['data'] else 'warning'
-        message = data_payload['data'][error_or_warning_key]
+        message = sanitize_html(data_payload['data'][error_or_warning_key])
         return f'<div class="status-card error-card"><div class="error-message">{message}</div></div>'
 
     cards_html = ''
@@ -648,7 +687,7 @@ def status():
 @limiter.limit("10 per minute")
 def search():
     """Search interfaces and return matching cards as HTML or JSON."""
-    query = request.args.get('q', '').lower()
+    query = sanitize_html(request.args.get('q', '').lower())
     data_payload = get_status_data_with_caching()
 
     if 'error' in data_payload['data'] or 'warning' in data_payload['data']:
@@ -657,7 +696,7 @@ def search():
             return jsonify(data_payload)
         else:
             error_or_warning_key = 'error' if 'error' in data_payload['data'] else 'warning'
-            message = data_payload['data'][error_or_warning_key]
+            message = sanitize_html(data_payload['data'][error_or_warning_key])
             return f'<div class="status-card error-card"><div class="error-message">{message}</div></div>'
 
     filtered_data = {}
