@@ -558,11 +558,43 @@ def format_duration(seconds):
 
     return ' '.join(parts)
 
+def count_interfaces(data):
+    """Count the number of up and down interfaces.
+
+    Args:
+        data (dict): The interface data dictionary.
+
+    Returns:
+        tuple: (up_count, down_count, total_count)
+    """
+    up_count = 0
+    down_count = 0
+    total_count = 0
+
+    for info in data.values():
+        if isinstance(info, dict) and 'status' in info:
+            total_count += 1
+            if info['status'] == 'Up':
+                up_count += 1
+            else:
+                down_count += 1
+
+    return up_count, down_count, total_count
+
 @app.route('/')
 @limiter.exempt
 def index():
     """Render the main status page."""
-    return render_template('index.html')
+    data = get_status_data_with_caching()
+    up_count, down_count, total_count = count_interfaces(data['data'])
+    
+    meta_description = f"Reticulum Network Status - Up: {up_count} Down: {down_count} Total: {total_count}"
+    
+    return render_template('index.html', 
+                         up_count=up_count,
+                         down_count=down_count,
+                         total_count=total_count,
+                         meta_description=meta_description)
 
 @app.route('/api/status')
 @limiter.limit("10 per minute")

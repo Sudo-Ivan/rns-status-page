@@ -308,3 +308,17 @@ body {
         grid-template-columns: 1fr;
     }
 }
+
+.interface-counts {
+    color: #888;
+    font-size: 0.9em;
+    margin-top: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+}
+
+.count-separator {
+    color: #666;
+}

@@ -3,7 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reticulum Status</title>
+    <title>Reticulum Network Status</title>
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="{{ meta_description }}">
+    <meta name="keywords" content="reticulum, network, status, monitoring">
+    
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="Reticulum Network Status">
+    <meta property="og:description" content="{{ meta_description }}">
+    <meta property="og:image" content="{{ url_for('static', filename='og.png', _external=True) }}">
+    <meta property="og:type" content="website">
+    
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Reticulum Network Status">
+    <meta name="twitter:description" content="{{ meta_description }}">
+    <meta name="twitter:image" content="{{ url_for('static', filename='og.png', _external=True) }}">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='favicon.png') }}">
+    
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <script src="{{ url_for('static', filename='vendor/htmx.min.js') }}"></script>
 </head>
@@ -29,6 +50,13 @@
                         <path fill="currentColor" d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
                     </svg>
                 </a>
+            </div>
+            <div class="interface-counts">
+                <span>Up: {{ up_count }}</span>
+                <span class="count-separator">|</span>
+                <span>Down: {{ down_count }}</span>
+                <span class="count-separator">|</span>
+                <span>Total: {{ total_count }}</span>
             </div>
         </div>
         <div id="status-grid" 
