@@ -4,6 +4,9 @@ This script creates a web server that displays Reticulum network status
 information using rnstatus command output.
 """
 
+import argparse
+import base64
+import hashlib
 import json
 import logging
 import os
@@ -13,18 +16,15 @@ import sys
 import tempfile
 import threading
 import time
-import hashlib
-import base64
 from datetime import datetime
-import argparse
 
 import bleach
 from dotenv import load_dotenv
-from flask import Flask, render_template, jsonify, Response, request
+from flask import Flask, Response, jsonify, render_template, request
+from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_talisman import Talisman
-from flask_cors import CORS
 
 logging.basicConfig(
     level=logging.INFO,
@@ -104,7 +104,7 @@ def load_uptime_tracker(filepath):
     """
     if os.path.exists(filepath):
         try:
-            with open(filepath, "r", encoding="utf-8") as f:
+            with open(filepath, encoding="utf-8") as f:
                 data = json.load(f)
                 if isinstance(data, dict):
                     logger.info(f"Successfully loaded uptime tracker from {filepath}")
@@ -201,6 +201,12 @@ def run_rnsd():
         logger.info("rnsd daemon started successfully")
         return True
 
+    except FileNotFoundError:
+        logger.error("rnsd command not found. Please ensure it is installed and in PATH.")
+        return False
+    except OSError as e:
+        logger.error(f"Error starting rnsd due to an OS error: {e.strerror} (errno {e.errno})")
+        return False
     except Exception as e:
         logger.error(f"Error starting rnsd: {e}")
         return False
@@ -284,12 +290,12 @@ def get_rnstatus_from_command():
             )
             if result.stderr:
                 error_detail += f"\nError output: {result.stderr.strip()}"
-            
+
             if result.returncode == 2:
                 error_detail += "\nrnstatus takes a while to initialize, please wait at least 5 minutes."
             elif result.returncode == 1:
                 error_detail += "\ncannot connect to a rnsd or shared connection instance"
-            
+
             logger.error(error_detail)
             return f"Error: {error_detail}"
 
@@ -558,6 +564,7 @@ def sanitize_html(text):
 
     Returns:
         str: Sanitized text.
+
     """
     if not isinstance(text, str):
         return str(text)
@@ -698,6 +705,7 @@ def count_interfaces(data):
 
     Returns:
         tuple: (up_count, down_count, total_count)
+
     """
     up_count = 0
     down_count = 0
@@ -722,6 +730,7 @@ def calculate_file_hash(filepath):
 
     Returns:
         str: Base64 encoded hash.
+
     """
     try:
         with open(filepath, "rb") as f:
