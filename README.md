@@ -2,7 +2,6 @@
 
 [![Socket Badge](https://socket.dev/api/badge/pypi/package/rns-status-page/1.1.2?artifact_id=tar-gz)](https://socket.dev/pypi/package/rns-status-page/overview/)
 
-
 [Reticulum](https://reticulum.network/) status page using direct Reticulum library integration and `rnsd` from the utilities. Built using Flask, Gunicorn, and HTMX.
 
 Request to Add or Remove an Interface: Open a [Issue](https://github.com/Sudo-Ivan/rns-status-page/issues/new) or message me on Reticulum `c0cdcb64499e4f0d544ff87c9d5e2485` this only applies to my instance at [rstatus.quad4.io](https://rstatus.quad4.io)
@@ -12,7 +11,6 @@ Request to Add or Remove an Interface: Open a [Issue](https://github.com/Sudo-Iv
 - Check status of Reticulum interfaces.
 - Download specific or all interfaces (txt)
 - API for usage in other projects/applications
-- Automatic rnsd management with configurable options
 
 ### Security
 
