@@ -38,7 +38,7 @@ replace `docker` with `podman` if you are using podman.
 Verify rnstatus works:
 
 ```bash
-docker exec rns-status-page rnstatus or docker exec <your-container-name> rnstatus
+docker exec rns-status-page rnstatus # or docker exec <your-container-name> rnstatus
 ```
 
 ## To-Do
