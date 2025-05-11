@@ -15,13 +15,13 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/Sudo-Ivan/rns-status-page",
-    packages=['rns_status_page'],
-    package_dir={'rns_status_page': 'rns_status_page'},
+    packages=["rns_status_page"],
+    package_dir={"rns_status_page": "rns_status_page"},
     include_package_data=True,
     package_data={
-        'rns_status_page': [
-            'templates/**/*',
-            'static/**/*',
+        "rns_status_page": [
+            "templates/**/*",
+            "static/**/*",
         ],
     },
     install_requires=requirements,
@@ -30,10 +30,10 @@ setuptools.setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    python_requires='>=3.6',
+    python_requires=">=3.6",
     entry_points={
-        'console_scripts': [
-            'rns-status-page=rns_status_page.status_page:main',
+        "console_scripts": [
+            "rns-status-page=rns_status_page.status_page:main",
         ],
     },
 )
