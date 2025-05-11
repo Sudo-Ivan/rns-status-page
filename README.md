@@ -20,6 +20,9 @@ It uses `uptime.json` to track uptime of interfaces and persist across rns-statu
 
 ## Docker/Podman
 
+> [!NOTE]  
+> Please wait 5 minutes for rnstatus to work.
+
 ```bash
 docker run -d --name rns-status-page -p 5000:5000 ghcr.io/sudo-ivan/rns-status-page:latest
 ```
@@ -29,6 +32,14 @@ docker run -d --name rns-status-page -p 5000:5000 -v ./uptime.json:/app/uptime.j
 ```
 
 replace `docker` with `podman` if you are using podman.
+
+### Debugging
+
+Verify rnstatus works:
+
+```bash
+docker exec rns-status-page rnstatus or docker exec <your-container-name> rnstatus
+```
 
 ## To-Do
 
