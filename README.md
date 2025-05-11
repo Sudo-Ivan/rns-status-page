@@ -7,6 +7,20 @@
 
 Request to Add or Remove an Interface: Open a [Issue](https://github.com/Sudo-Ivan/rns-status-page/issues/new) or message me on Reticulum `c0cdcb64499e4f0d544ff87c9d5e2485` this only applies to my instance at [rstatus.quad4.io](https://rstatus.quad4.io)
 
+## Features
+
+- Check status of Reticulum interfaces using `rnstatus`.
+- Download specific or all interfaces (txt).
+- API for usage in other projects/applications.
+
+### Security
+
+- API rate limiting with [Flask-Limiter](https://flask-limiter.readthedocs.io/en/latest/).
+- [CORS](https://flask-cors.readthedocs.io/en/latest/) for locking down cross origin requests.
+- [Talisman](https://github.com/GoogleCloudPlatform/flask-talisman) for security headers.
+- Docker uses [Chainguard](https://github.com/chainguard-dev/chainguard-images) images for rootless and distroless containers.
+
+
 ## Install
 
 ```bash
@@ -20,6 +34,14 @@ rns-status-page
 ```
 
 It uses `uptime.json` to track uptime of interfaces and persist across rns-status-page restarts.
+
+### No rnsd
+
+If you already have rnsd or nomadnet running you can use the `--no-rnsd` flag to not start rnsd on a separate thread for the status page.
+
+```bash
+rns-status-page --no-rnsd
+```
 
 ## Docker/Podman
 
@@ -75,7 +97,7 @@ docker exec rns-status-page rnstatus # or docker exec <your-container-name> rnst
 - [ ] Optional I2P, yggdrasil support (in docker).
 - [ ] Convert announces recieved/sent into a more readable format.
 - [ ] Add API security tests.
-- [ ] Add docker-compose.yml.
+- [ ] Memory and performance optimization.
 
 ## API
 
