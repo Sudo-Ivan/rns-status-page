@@ -18,7 +18,7 @@ Request to Add or Remove an Interface: Open a [Issue](https://github.com/Sudo-Iv
 - API rate limiting with [Flask-Limiter](https://flask-limiter.readthedocs.io/en/latest/).
 - [CORS](https://flask-cors.readthedocs.io/en/latest/) for locking down cross origin requests.
 - [Talisman](https://github.com/GoogleCloudPlatform/flask-talisman) for security headers.
-- Docker uses [Chainguard](https://github.com/chainguard-dev/chainguard-images) images for rootless and distroless containers.
+- Docker uses [Chainguard](https://github.com/chainguard-dev) images for rootless and distroless containers.
 
 
 ## Install
