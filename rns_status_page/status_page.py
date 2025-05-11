@@ -19,12 +19,14 @@ import time
 from datetime import datetime
 
 import bleach
+import RNS
 from dotenv import load_dotenv
 from flask import Flask, Response, jsonify, render_template, request
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_talisman import Talisman
+from RNS.Interfaces.Interface import Interface as RNSInterface
 
 logging.basicConfig(
     level=logging.INFO,
@@ -40,7 +42,6 @@ load_dotenv()
 
 app = Flask(__name__)
 
-# Configure CORS
 CORS(
     app,
     resources={
@@ -83,13 +84,54 @@ limiter = Limiter(
     storage_uri="memory://",
 )
 
-IGNORE_SECTIONS = ["Shared Instance", "AutoInterface"]
+IGNORE_SECTIONS = ["Shared Instance", "AutoInterface", "LocalInterface"]
 
 CACHE_DURATION_SECONDS = 30
 RETRY_INTERVAL_SECONDS = 30
 SSE_UPDATE_INTERVAL_SECONDS = 5
 
 UPTIME_FILE_PATH = os.path.abspath("uptime.json")
+
+
+def size_str(num, suffix="B"):
+    """Format number to human readable size string."""
+    if num < 0:
+        return "0 B"
+
+    units = ["", "K", "M", "G", "T", "P", "E", "Z"]
+    last_unit = "Y"
+
+    if suffix == "b":
+        num *= 8
+
+    for unit in units:
+        if abs(num) < 1000.0:
+            if unit == "":
+                return f"{num:.0f} {unit}{suffix}"
+            return f"{num:.2f} {unit}{suffix}"
+        num /= 1000.0
+
+    return f"{num:.2f} {last_unit}{suffix}"
+
+
+def speed_str(num, suffix="bps"):
+    """Format number to human readable speed string."""
+    if num < 0:
+        return "0 bps"
+
+    units = ["", "k", "M", "G", "T", "P", "E", "Z"]
+    last_unit = "Y"
+
+    if suffix == "Bps":
+        num /= 8
+        units = ["", "K", "M", "G", "T", "P", "E", "Z"]
+
+    for unit in units:
+        if abs(num) < 1000.0:
+            return f"{num:.2f} {unit}{suffix}"
+        num /= 1000.0
+
+    return f"{num:.2f} {last_unit}{suffix}"
 
 
 def load_uptime_tracker(filepath):
@@ -161,6 +203,7 @@ _cache = {
     "timestamp": 0,
     "lock": threading.Lock(),
     "interface_uptime_tracker": load_uptime_tracker(UPTIME_FILE_PATH),
+    "rns_instance": None,
 }
 
 _rnsd_process = None
@@ -202,10 +245,14 @@ def run_rnsd():
         return True
 
     except FileNotFoundError:
-        logger.error("rnsd command not found. Please ensure it is installed and in PATH.")
+        logger.error(
+            "rnsd command not found. Please ensure it is installed and in PATH."
+        )
         return False
     except OSError as e:
-        logger.error(f"Error starting rnsd due to an OS error: {e.strerror} (errno {e.errno})")
+        logger.error(
+            f"Error starting rnsd due to an OS error: {e.strerror} (errno {e.errno})"
+        )
         return False
     except Exception as e:
         logger.error(f"Error starting rnsd: {e}")
@@ -227,109 +274,367 @@ def stop_rnsd():
         _rnsd_process.terminate()
 
 
-def check_rnstatus_installation():
-    """Check if rnstatus is properly installed and accessible.
+def _init_rns_instance(max_retries=5, retry_delay=1.0):
+    """Initialize the RNS.Reticulum instance, with retries if rnsd is managed locally."""
+    with _cache["lock"]:
+        if _cache["rns_instance"] is not None:
+            return _cache["rns_instance"]
+
+        rns_instance = None
+        is_rnsd_managed_locally = bool(_rnsd_process and _rnsd_process.poll() is None)
+        attempts = max_retries if is_rnsd_managed_locally else 1
+
+        def try_connect_shared():
+            try:
+                instance = RNS.Reticulum(require_shared_instance=True)
+                logger.info("Successfully connected to shared RNS instance.")
+                return instance
+            except Exception as e:
+                logger.warning(f"Could not connect to shared RNS instance: {e}")
+                return None
+
+        for attempt in range(attempts):
+            rns_instance = try_connect_shared()
+            if rns_instance:
+                _cache["rns_instance"] = rns_instance
+                return rns_instance
+
+            if not is_rnsd_managed_locally:
+                break
+            if attempt < attempts - 1:
+                logger.info(f"Retrying in {retry_delay}s as rnsd is managed locally...")
+                time.sleep(retry_delay)
+
+        if not is_rnsd_managed_locally:
+            try:
+                configdir = os.getenv("RNS_CONFIG_DIR", None)
+                rns_instance = RNS.Reticulum(configdir=configdir, loglevel=RNS.LOG_INFO)
+                logger.info("Successfully created a new RNS instance.")
+                _cache["rns_instance"] = rns_instance
+                return rns_instance
+            except Exception as e_new:
+                logger.error(f"Failed to create a new RNS instance: {e_new}")
+        else:
+            logger.error("All attempts to connect to locally managed rnsd failed.")
+
+        _cache["rns_instance"] = None
+        return None
+
+
+def _get_rns_stats_direct(max_retries=3, retry_delay=25):
+    """Fetch interface statistics directly using the RNS library.
 
     Returns:
-        tuple: (bool, str) - (is_installed, error_message)
+        dict: A dictionary containing interface statistics, or an error dictionary.
 
     """
-    rnstatus_path = shutil.which("rnstatus")
-    if not rnstatus_path:
-        return False, "rnstatus command not found in PATH"
+    rns_instance = _init_rns_instance()
+    if not rns_instance:
+        return {"error": "Reticulum instance not available. Cannot fetch stats."}
 
-    try:
-        result = subprocess.run(
-            [rnstatus_path, "--help"],
-            capture_output=True,
-            text=True,
-            timeout=5,
-            shell=False,  # nosec B603
-        )
-        if result.returncode != 0:
-            return (
-                False,
-                f"rnstatus command failed with return code {result.returncode}",
+    def try_get_stats():
+        try:
+            stats = rns_instance.get_interface_stats()
+            if not stats or "interfaces" not in stats:
+                logger.warning(
+                    "RNS.get_interface_stats() returned empty or invalid data."
+                )
+                return {
+                    "warning": "RNS.get_interface_stats() returned empty or invalid data."
+                }
+            return stats
+        except ConnectionRefusedError as e:
+            logger.warning(
+                f"RNS instance still initializing or connection refused: {e}. Waiting {retry_delay} seconds before retry."
             )
-        return True, "rnstatus is installed and accessible"
-    except subprocess.TimeoutExpired:
-        return False, "rnstatus --help command timed out"
-    except Exception as e:
-        return False, f"Error checking rnstatus: {str(e)}"
+            return {"error": "connection_refused", "details": str(e)}
+        except Exception as e:
+            logger.error(f"Error fetching stats directly from RNS: {e}", exc_info=True)
+            return {"error": "general_error", "details": str(e)}
+
+    for attempt in range(max_retries):
+        result = try_get_stats()
+
+        if "error" not in result:
+            return result
+
+        if result["error"] == "connection_refused" and attempt < max_retries - 1:
+            logger.info(f"Retrying in {retry_delay}s...")
+            time.sleep(retry_delay)
+        else:
+            if result["error"] == "connection_refused":
+                logger.error(
+                    "All attempts to fetch RNS stats failed due to ConnectionRefusedError."
+                )
+                with _cache["lock"]:
+                    _cache["rns_instance"] = None
+                return {
+                    "error": f"Failed to fetch stats from RNS after multiple retries: {result['details']}"
+                }
+            else:
+                with _cache["lock"]:
+                    _cache["rns_instance"] = None
+                return {
+                    "error": f"Error fetching stats directly from RNS: {result['details']}"
+                }
+
+    return {
+        "error": "Reached end of _get_rns_stats_direct without returning stats, implies max_retries hit for ConnectionRefusedError."
+    }
 
 
-def get_rnstatus_from_command():
-    """Execute rnstatus command and return the output.
+def _parse_rns_stats_dict(stats_dict, current_uptime_tracker):
+    """Parse the RNS interface stats dictionary into a structured format.
+
+    Args:
+        stats_dict (dict): The raw stats dictionary from RNS.get_interface_stats().
+        current_uptime_tracker (dict): The current uptime tracker data.
 
     Returns:
-        str: The output of the rnstatus command, or an error message.
+        tuple: A tuple containing the parsed data (dict) and the updated uptime tracker (dict).
 
     """
-    try:
-        is_installed, error_msg = check_rnstatus_installation()
-        if not is_installed:
-            logger.error(f"rnstatus installation check failed: {error_msg}")
-            return f"Error: {error_msg}"
+    parsed_interfaces = {}
+    updated_tracker = current_uptime_tracker.copy()
+    current_time_for_uptime = time.time()
 
-        rnstatus_path = shutil.which("rnstatus")
-        if not rnstatus_path:
-            return "Error: rnstatus command not found in PATH"
+    if "error" in stats_dict or "warning" in stats_dict:
+        return stats_dict, updated_tracker
 
-        result = subprocess.run(
-            [rnstatus_path, "-A"],
-            capture_output=True,
-            text=True,
-            timeout=30,
-            env=dict(os.environ, PYTHONUNBUFFERED="1"),
-            shell=False,  # nosec B603
-        )
+    if "interfaces" not in stats_dict or not isinstance(stats_dict["interfaces"], list):
+        logger.warning("No 'interfaces' list in stats_dict or it's not a list.")
+        return {
+            "warning": "Invalid or missing interface data in RNS stats."
+        }, updated_tracker
 
-        if result.returncode != 0:
-            error_detail = (
-                f"rnstatus command failed with return code {result.returncode}"
+    for ifstat in stats_dict["interfaces"]:
+        try:
+            interface_name_full = ifstat.get("name", "Unknown Interface")
+            section_name_part = (
+                interface_name_full.split("[")[0].strip()
+                if "[" in interface_name_full
+                else "Interface"
             )
-            if result.stderr:
-                error_detail += f"\nError output: {result.stderr.strip()}"
 
-            if result.returncode == 2:
-                error_detail += "\nrnstatus takes a while to initialize, please wait at least 5 minutes."
-            elif result.returncode == 1:
-                error_detail += "\ncannot connect to a rnsd or shared connection instance"
+            current_section_key_for_dict = interface_name_full
 
-            logger.error(error_detail)
-            return f"Error: {error_detail}"
+            if section_name_part in IGNORE_SECTIONS:
+                continue
 
-        if not result.stdout.strip():
-            logger.warning("rnstatus command returned empty output")
-            return "Warning: rnstatus returned empty output"
+            name_inside_brackets = ""
+            if "[" in interface_name_full and "]" in interface_name_full:
+                name_inside_brackets = interface_name_full.split("[", 1)[1].rsplit(
+                    "]", 1
+                )[0]
+            else:
+                name_inside_brackets = interface_name_full
 
-        return result.stdout
-    except subprocess.TimeoutExpired:
-        error_msg = "rnstatus command timed out after 30 seconds"
-        logger.error(error_msg)
-        return f"Error: {error_msg}"
-    except FileNotFoundError:
-        error_msg = (
-            "rnstatus command not found. Please ensure it is installed and in PATH."
+            tracker_key = interface_name_full
+            previous_record = updated_tracker.get(tracker_key)
+            first_up_ts = (
+                previous_record.get("first_up_timestamp") if previous_record else None
+            )
+
+            interface_details = {
+                "name": name_inside_brackets,
+                "section_type": section_name_part,
+                "status": "Up" if ifstat.get("status") else "Down",
+                "details": {},
+                "first_up_timestamp": first_up_ts,
+            }
+
+            new_status = interface_details["status"]
+            if tracker_key not in updated_tracker:
+                updated_tracker[tracker_key] = {
+                    "first_up_timestamp": None,
+                    "current_status": "Down",
+                    "last_seen_up": None,
+                }
+
+            previous_status_in_tracker = updated_tracker[tracker_key].get(
+                "current_status", "Down"
+            )
+            persisted_first_up_ts = updated_tracker[tracker_key].get(
+                "first_up_timestamp"
+            )
+
+            if new_status == "Up":
+                if previous_status_in_tracker == "Up" and persisted_first_up_ts:
+                    interface_details["first_up_timestamp"] = persisted_first_up_ts
+                else:
+                    interface_details["first_up_timestamp"] = current_time_for_uptime
+                    updated_tracker[tracker_key]["first_up_timestamp"] = (
+                        current_time_for_uptime
+                    )
+                updated_tracker[tracker_key]["last_seen_up"] = current_time_for_uptime
+            else:
+                interface_details["first_up_timestamp"] = None
+                updated_tracker[tracker_key]["first_up_timestamp"] = None
+            updated_tracker[tracker_key]["current_status"] = new_status
+
+            details_map = {
+                "Mode": "mode",
+                "Rate": "bitrate",
+                "Noise Fl.": "noise_floor",
+                "Battery": "battery_percent",
+                "Airtime": ["airtime_short", "airtime_long"],
+                "Ch. Load": ["channel_load_short", "channel_load_long"],
+                "Peers": "peers",
+                "I2P": "tunnelstate",
+                "Access": "ifac_signature",
+                "I2P B32": "i2p_b32",
+                "Queued": "announce_queue",
+                "Held": "held_announces",
+                "Clients": "clients",
+                "Network": "ifac_netname",
+            }
+
+            for display_key, stat_key_or_keys in details_map.items():
+                if isinstance(stat_key_or_keys, list):
+                    val_short = ifstat.get(stat_key_or_keys[0])
+                    val_long = ifstat.get(stat_key_or_keys[1])
+                    if val_short is not None and val_long is not None:
+                        interface_details["details"][display_key] = (
+                            f"{val_short}% (15s), {val_long}% (1h)"
+                        )
+                else:
+                    stat_value = ifstat.get(stat_key_or_keys)
+                    if stat_value is not None:
+                        if stat_key_or_keys == "bitrate":
+                            interface_details["details"][display_key] = speed_str(
+                                stat_value
+                            )
+                        elif stat_key_or_keys == "noise_floor":
+                            interface_details["details"][display_key] = (
+                                f"{stat_value} dBm"
+                            )
+                        elif stat_key_or_keys == "battery_percent":
+                            bat_state = ifstat.get("battery_state", "")
+                            interface_details["details"][display_key] = (
+                                f"{stat_value}% ({bat_state})"
+                            )
+                        elif (
+                            stat_key_or_keys == "ifac_signature"
+                            and ifstat.get("ifac_size") is not None
+                        ):
+                            sig_brief = (
+                                RNS.hexrep(stat_value[-5:], delimit=False)
+                                if isinstance(stat_value, bytes)
+                                else str(stat_value)[-10:]
+                            )
+                            interface_details["details"][display_key] = (
+                                f"{ifstat['ifac_size'] * 8}-bit IFAC by <...{sig_brief}>"
+                            )
+                        elif stat_key_or_keys == "mode":
+                            mode_map = {
+                                RNSInterface.MODE_FULL: "Full",
+                                RNSInterface.MODE_ACCESS_POINT: "Access Point",
+                                RNSInterface.MODE_POINT_TO_POINT: "Point-to-Point",
+                                RNSInterface.MODE_ROAMING: "Roaming",
+                                RNSInterface.MODE_BOUNDARY: "Boundary",
+                                RNSInterface.MODE_GATEWAY: "Gateway",
+                            }
+                            interface_details["details"][display_key] = mode_map.get(
+                                stat_value, "Unknown"
+                            )
+                        else:
+                            interface_details["details"][display_key] = str(stat_value)
+
+            rxb = ifstat.get("rxb", 0)
+            txb = ifstat.get("txb", 0)
+            rxs = ifstat.get("rxs", 0)
+            txs = ifstat.get("txs", 0)
+            rxb_str_fmt = f"↓{size_str(rxb)}  {speed_str(rxs)}"
+            txb_str_fmt = f"↑{size_str(txb)}  {speed_str(txs)}"
+            interface_details["details"]["Traffic"] = f"{txb_str_fmt}\n{rxb_str_fmt}"
+
+            iaf = ifstat.get("incoming_announce_frequency")
+            oaf = ifstat.get("outgoing_announce_frequency")
+            if iaf is not None and oaf is not None:
+                try:
+                    iaf_str = (
+                        RNS.prettyfrequency(iaf)
+                        if RNS and hasattr(RNS, "prettyfrequency")
+                        else f"{iaf:.2f} Hz"
+                    )
+                    oaf_str = (
+                        RNS.prettyfrequency(oaf)
+                        if RNS and hasattr(RNS, "prettyfrequency")
+                        else f"{oaf:.2f} Hz"
+                    )
+                    interface_details["details"]["Announces"] = (
+                        f"{oaf_str}↑\n{iaf_str}↓"
+                    )
+                except AttributeError:
+                    interface_details["details"]["Announces"] = (
+                        f"{oaf:.2f} Hz↑\n{iaf:.2f} Hz↓"
+                    )
+
+            parsed_interfaces[current_section_key_for_dict] = interface_details
+        except Exception as e:
+            logger.error(
+                f"Error parsing interface stat for {ifstat.get('name', 'N/A')}: {e}",
+                exc_info=True,
+            )
+            parsed_interfaces[ifstat.get("name", f"error_interface_{time.time()}")] = {
+                "name": ifstat.get("name", "Error Interface"),
+                "section_type": "Error",
+                "status": "Unknown",
+                "details": {"Error": f"Could not parse details: {e}"},
+                "first_up_timestamp": None,
+            }
+
+    if "transport_id" in stats_dict and stats_dict["transport_id"] is not None:
+        transport_info = {
+            "name": "Transport Instance",
+            "section_type": "Transport",
+            "status": "Up",
+            "details": {},
+            "first_up_timestamp": None,
+        }
+        transport_id_str = (
+            RNS.prettyhexrep(stats_dict["transport_id"])
+            if RNS and hasattr(RNS, "prettyhexrep")
+            else str(stats_dict["transport_id"])
         )
-        logger.error(error_msg)
-        return f"Error: {error_msg}"
-    except Exception as e:
-        error_msg = f"Unexpected error executing rnstatus: {str(e)}"
-        logger.exception(error_msg)
-        return f"Error: {error_msg}"
+        transport_info["details"]["ID"] = transport_id_str
+        if (
+            "probe_responder" in stats_dict
+            and stats_dict["probe_responder"] is not None
+        ):
+            probe_resp_str = (
+                RNS.prettyhexrep(stats_dict["probe_responder"])
+                if RNS and hasattr(RNS, "prettyhexrep")
+                else str(stats_dict["probe_responder"])
+            )
+            transport_info["details"]["Probe Responder"] = f"{probe_resp_str} active"
+        if (
+            "transport_uptime" in stats_dict
+            and stats_dict["transport_uptime"] is not None
+        ):
+            uptime_str = (
+                RNS.prettytime(stats_dict["transport_uptime"])
+                if RNS and hasattr(RNS, "prettytime")
+                else f"{stats_dict['transport_uptime']}s"
+            )
+            transport_info["details"]["Uptime"] = uptime_str
+
+        parsed_interfaces["Transport Instance Status"] = transport_info
+
+    return parsed_interfaces, updated_tracker
 
 
 def get_and_cache_rnstatus_data():
-    """Fetch rnstatus data, parse it, update uptime info, and update the cache.
+    """Fetch RNS stats directly, parse it, update uptime info, and update the cache.
 
     Returns:
         tuple: A tuple containing the parsed data and the current time.
 
     """
-    raw_output = get_rnstatus_from_command()
-    parsed_data, updated_tracker = parse_rnstatus(
-        raw_output, _cache["interface_uptime_tracker"]
+    raw_stats_dict = _get_rns_stats_direct()
+
+    parsed_data, updated_tracker = _parse_rns_stats_dict(
+        raw_stats_dict, _cache["interface_uptime_tracker"]
     )
     current_time = time.time()
 
@@ -346,13 +651,28 @@ def get_and_cache_rnstatus_data():
                         if prev_tracker.get(
                             "current_status"
                         ) == "Up" and prev_tracker.get("first_up_timestamp"):
-                            info["first_up_timestamp"] = prev_tracker[
-                                "first_up_timestamp"
-                            ]
-                            if isinstance(updated_tracker.get(tracker_key), dict):
-                                updated_tracker[tracker_key]["first_up_timestamp"] = (
-                                    prev_tracker["first_up_timestamp"]
-                                )
+                            if (
+                                "first_up_timestamp" not in info
+                                or info["first_up_timestamp"] is None
+                            ):
+                                info["first_up_timestamp"] = prev_tracker[
+                                    "first_up_timestamp"
+                                ]
+
+                            if tracker_key in updated_tracker and isinstance(
+                                updated_tracker[tracker_key], dict
+                            ):
+                                if (
+                                    "first_up_timestamp"
+                                    not in updated_tracker[tracker_key]
+                                    or updated_tracker[tracker_key][
+                                        "first_up_timestamp"
+                                    ]
+                                    is None
+                                ):
+                                    updated_tracker[tracker_key][
+                                        "first_up_timestamp"
+                                    ] = prev_tracker["first_up_timestamp"]
 
         _cache["data"] = parsed_data
         _cache["timestamp"] = current_time
@@ -392,168 +712,9 @@ def get_status_data_with_caching():
             "cache_hit": bool(
                 cached_data and (time.time() - cache_timestamp < CACHE_DURATION_SECONDS)
             ),
+            "rns_direct_mode": True,
         },
     }
-
-
-def parse_rnstatus(output, current_uptime_tracker):
-    """Parse the rnstatus output into a structured format.
-
-    Args:
-        output (str): The raw output from the rnstatus command.
-        current_uptime_tracker (dict): The current uptime tracker data.
-
-    Returns:
-        tuple: A tuple containing the parsed data and the updated uptime tracker.
-
-    """
-    sections = {}
-    current_section_title = None
-    is_current_section_ignored = False
-    updated_tracker = current_uptime_tracker.copy()
-    current_time_for_uptime = time.time()
-
-    if output.startswith("Error:") or output.startswith("Warning:"):
-        return {"error": output}, updated_tracker
-
-    lines = output.split("\n")
-    idx = 0
-    while idx < len(lines):
-        line_content = lines[idx]
-        line = line_content.strip()
-        idx += 1
-
-        if not line:
-            continue
-
-        if "[" in line and "]" in line:
-            section_name_part = line.split("[")[0].strip()
-            interface_name_part = line.split("[")[1].split("]")[0]
-            current_section_key_for_dict = (
-                f"{section_name_part} [{interface_name_part}]"
-            )
-            current_section_title = current_section_key_for_dict
-
-            if section_name_part in IGNORE_SECTIONS:
-                is_current_section_ignored = True
-            else:
-                is_current_section_ignored = False
-                tracker_key = interface_name_part
-                previous_record = updated_tracker.get(tracker_key)
-
-                if previous_record and previous_record.get("current_status") == "Up":
-                    first_up_ts = previous_record.get("first_up_timestamp")
-                else:
-                    first_up_ts = None
-
-                sections[current_section_key_for_dict] = {
-                    "name": interface_name_part,
-                    "section_type": section_name_part,
-                    "status": "Down",
-                    "details": {},
-                    "first_up_timestamp": first_up_ts,
-                }
-
-                if not previous_record:
-                    updated_tracker[tracker_key] = {
-                        "first_up_timestamp": first_up_ts,
-                        "current_status": "Down",
-                        "last_seen_up": None,
-                    }
-                else:
-                    updated_tracker[tracker_key]["current_status"] = (
-                        previous_record.get("current_status", "Down")
-                    )
-                    updated_tracker[tracker_key]["last_seen_up"] = previous_record.get(
-                        "last_seen_up"
-                    )
-
-        elif current_section_title and not is_current_section_ignored and ":" in line:
-            key_part, value_part = line.split(":", 1)
-            key = key_part.strip()
-            value = value_part.strip()
-
-            if key == "Traffic":
-                if idx < len(lines):
-                    next_line_content = lines[idx]
-                    if (
-                        next_line_content
-                        and next_line_content[0].isspace()
-                        and "↓" in next_line_content
-                    ):
-                        value += f"\n{next_line_content.strip()}"
-                        idx += 1
-            elif key == "Announces":
-                if idx < len(lines):
-                    next_line_content = lines[idx]
-                    if (
-                        next_line_content
-                        and next_line_content[0].isspace()
-                        and "↓" in next_line_content
-                    ):
-                        value += f"\n{next_line_content.strip()}"
-                        idx += 1
-
-            if key == "Status":
-                new_status = "Up" if "Up" in value else "Down"
-                target_section = sections[current_section_title]
-                tracker_key = target_section["name"]
-
-                if tracker_key not in updated_tracker:
-                    updated_tracker[tracker_key] = {
-                        "first_up_timestamp": None,
-                        "current_status": "Down",
-                        "last_seen_up": None,
-                    }
-
-                previous_status_in_tracker = updated_tracker[tracker_key].get(
-                    "current_status", "Down"
-                )
-                persisted_first_up_ts = updated_tracker[tracker_key].get(
-                    "first_up_timestamp"
-                )
-                persisted_last_seen_up = updated_tracker[tracker_key].get(
-                    "last_seen_up"
-                )
-
-                target_section["status"] = new_status
-
-                if new_status == "Up":
-                    if previous_status_in_tracker == "Up":
-                        if persisted_first_up_ts:
-                            target_section["first_up_timestamp"] = persisted_first_up_ts
-                        elif persisted_last_seen_up:
-                            target_section["first_up_timestamp"] = (
-                                persisted_last_seen_up
-                            )
-                            updated_tracker[tracker_key]["first_up_timestamp"] = (
-                                persisted_last_seen_up
-                            )
-                        else:
-                            target_section["first_up_timestamp"] = (
-                                current_time_for_uptime
-                            )
-                            updated_tracker[tracker_key]["first_up_timestamp"] = (
-                                current_time_for_uptime
-                            )
-                    else:
-                        target_section["first_up_timestamp"] = current_time_for_uptime
-                        updated_tracker[tracker_key]["first_up_timestamp"] = (
-                            current_time_for_uptime
-                        )
-
-                    updated_tracker[tracker_key]["last_seen_up"] = (
-                        current_time_for_uptime
-                    )
-                else:
-                    target_section["first_up_timestamp"] = None
-                    updated_tracker[tracker_key]["first_up_timestamp"] = None
-
-                updated_tracker[tracker_key]["current_status"] = new_status
-
-            sections[current_section_title]["details"][key] = value
-
-    return sections, updated_tracker
 
 
 def sanitize_html(text):
@@ -750,7 +911,6 @@ def index():
 
     meta_description = f"Reticulum Network Status - Up: {up_count} Down: {down_count} Total: {total_count}"
 
-    # Calculate HTMX integrity hash
     htmx_path = os.path.join(app.static_folder, "vendor", "htmx.min.js")
     htmx_integrity = calculate_file_hash(htmx_path)
 
@@ -761,6 +921,7 @@ def index():
         total_count=total_count,
         meta_description=meta_description,
         htmx_integrity=htmx_integrity,
+        rns_direct_mode=True,
     )
 
 
@@ -1003,14 +1164,14 @@ def main():
     logger.info("Attempting initial population of status cache...")
     get_and_cache_rnstatus_data()
 
-    is_installed, msg = check_rnstatus_installation()
-    if not is_installed:
-        logger.error(f"rnstatus not properly installed: {msg}")
+    is_available, msg = check_rns_library()
+    if not is_available:
+        logger.error(f"RNS library not available or not functional: {msg}")
         if managed_rnsd:
             stop_rnsd()
         sys.exit(1)
     else:
-        logger.info(f"rnstatus check passed: {msg}")
+        logger.info(f"RNS library check passed: {msg}")
 
     import gunicorn.app.base
 
@@ -1072,6 +1233,76 @@ def main():
             logger.error(
                 f"Unexpected error cleaning up temporary directory {temp_dir}: {e}"
             )
+
+    with _cache["lock"]:
+        if _cache["rns_instance"] is not None:
+            _cache["rns_instance"] = None
+            logger.info("Cleared local RNS instance reference.")
+
+
+def check_rns_library():
+    """Check if the RNS library is available and if the cached instance is valid.
+
+    Returns:
+        tuple: (bool, str) indicating whether the library is available and a message.
+
+    """
+    try:
+        import RNS  # noqa F401 - We are just checking import
+    except ImportError:
+        logger.error("RNS library (Python package) not found. Please install it.")
+        return False, "RNS library (python package) not found. Please install it."
+
+    with _cache["lock"]:
+        rns_instance = _cache.get("rns_instance")
+        initial_data = _cache.get("data")
+
+        if rns_instance is not None:
+            if initial_data and not (
+                "error" in initial_data or "warning" in initial_data
+            ):
+                logger.info(
+                    "RNS library check: RNS instance is active and initial data fetch was successful."
+                )
+                return (
+                    True,
+                    "RNS instance is active and initial data fetch was successful.",
+                )
+            elif initial_data and ("error" in initial_data):
+                error_message = initial_data["error"]
+                logger.warning(
+                    f"RNS library check: RNS instance exists but initial data fetch reported an error: {error_message}"
+                )
+                return False, f"RNS active but unusable for stats: {error_message}"
+            elif initial_data and ("warning" in initial_data):
+                logger.info(
+                    f"RNS library check: RNS instance exists but initial data fetch reported a warning: {initial_data['warning']}"
+                )
+                return (
+                    True,
+                    f"RNS active, initial data fetch warning: {initial_data['warning']}",
+                )
+            else:
+                logger.info(
+                    "RNS library check: RNS instance exists but initial data state is indeterminate."
+                )
+                return (
+                    True,
+                    "RNS instance is active but initial data state indeterminate.",
+                )
+
+        else:
+            failure_reason = (
+                "Failed to initialize or connect to RNS instance during startup."
+            )
+            if initial_data and "error" in initial_data:
+                failure_reason = initial_data["error"]
+            logger.error(
+                f"RNS library check: RNS instance is not available. Reason: {failure_reason}"
+            )
+            return False, f"RNS instance not available: {failure_reason}"
+
+    return False, "RNS library check inconclusive."
 
 
 if __name__ == "__main__":
