@@ -89,6 +89,7 @@ docker exec rns-status-page rnstatus # or docker exec <your-container-name> rnst
 ## To-Do
 
 - [ ] More tracking over time and stats.
+- [ ] Get status using Reticulum directly instead of  `rnstatus` utility.
 - [ ] Stale server detection (node is up but no announces being recieved/sent).
 - [ ] Filter by reliability and uptime.
 - [ ] Micron Status Page.
