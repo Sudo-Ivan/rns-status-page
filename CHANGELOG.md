@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.3.0
+
+- Use Reticulum directly to get the status of interfaces/servers.
+- Better error handling and details
+- Removed redundant parameters
+- Added `RNS Testnet Dublin` to config.
+
 ## 1.2.0
 
 - Added `--no-rnsd` flag to not start `rnsd` in a separate thread.
