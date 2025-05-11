@@ -19,7 +19,6 @@ from datetime import datetime
 import bleach
 from dotenv import load_dotenv
 from flask import Flask, render_template, jsonify, Response, request
-from markupsafe import escape
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_talisman import Talisman
@@ -649,7 +648,7 @@ def index():
     up_count, down_count, total_count = count_interfaces(data['data'])
 
     meta_description = f"Reticulum Network Status - Up: {up_count} Down: {down_count} Total: {total_count}"
-    
+
     # Calculate HTMX integrity hash
     htmx_path = os.path.join(app.static_folder, 'vendor', 'htmx.min.js')
     htmx_integrity = calculate_file_hash(htmx_path)
