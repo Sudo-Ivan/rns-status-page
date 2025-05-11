@@ -46,7 +46,8 @@ Retrieves the current status of all interfaces. Supports both HTML and JSON outp
     },
     "debug": {
       "processing_time_ms": 5.2,
-      "cache_hit": true
+      "cache_hit": true,
+      "rns_direct_mode": true
     }
   }
   ```
@@ -82,7 +83,7 @@ Searches for interfaces matching a query string. Supports both HTML and JSON out
     "data": {
       "TCPInterface [quad4/rns.quad4.io:4242]": { /* ... */ }
       // ... other matching interfaces or an empty object if no matches
-      // or an "error"/"warning" key if rnstatus failed
+      // or an "error"/"warning" key if RNS stats fetch failed
     },
     "debug": { /* ... */ },
     "query": "TCP"

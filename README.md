@@ -3,22 +3,23 @@
 [![Socket Badge](https://socket.dev/api/badge/pypi/package/rns-status-page/1.1.2?artifact_id=tar-gz)](https://socket.dev/pypi/package/rns-status-page/overview/)
 
 
-[Reticulum](https://reticulum.network/) status page using `rnstatus` and `rnsd` from the utilities. Built using Flask, Gunicorn, and HTMX.
+[Reticulum](https://reticulum.network/) status page using direct Reticulum library integration and `rnsd` from the utilities. Built using Flask, Gunicorn, and HTMX.
 
 Request to Add or Remove an Interface: Open a [Issue](https://github.com/Sudo-Ivan/rns-status-page/issues/new) or message me on Reticulum `c0cdcb64499e4f0d544ff87c9d5e2485` this only applies to my instance at [rstatus.quad4.io](https://rstatus.quad4.io)
 
 ## Features
 
-- Check status of Reticulum interfaces using `rnstatus`.
-- Download specific or all interfaces (txt).
-- API for usage in other projects/applications.
+- Check status of Reticulum interfaces.
+- Download specific or all interfaces (txt)
+- API for usage in other projects/applications
+- Automatic rnsd management with configurable options
 
 ### Security
 
-- API rate limiting with [Flask-Limiter](https://flask-limiter.readthedocs.io/en/latest/).
-- [CORS](https://flask-cors.readthedocs.io/en/latest/) for locking down cross origin requests.
-- [Talisman](https://github.com/GoogleCloudPlatform/flask-talisman) for security headers.
-- Docker uses [Chainguard](https://github.com/chainguard-dev) images for rootless and distroless containers.
+- API rate limiting with [Flask-Limiter](https://flask-limiter.readthedocs.io/en/latest/)
+- [CORS](https://flask-cors.readthedocs.io/en/latest/) for locking down cross origin requests
+- [Talisman](https://github.com/GoogleCloudPlatform/flask-talisman) for security headers
+- Docker uses [Chainguard](https://github.com/chainguard-dev) images for rootless and distroless containers
 
 ## Install
 
@@ -45,7 +46,7 @@ rns-status-page --no-rnsd
 ## Docker/Podman
 
 > [!NOTE]  
-> Please wait atleast 5 minutes for rnstatus to work.
+> Please wait at least 5 minutes for RNS to initialize and stats to be available.
 
 ```bash
 docker run -d --name rns-status-page -p 5000:5000 ghcr.io/sudo-ivan/rns-status-page:latest
@@ -83,23 +84,24 @@ The compose configuration includes:
 Verify rnstatus works:
 
 ```bash
-docker exec rns-status-page rnstatus # or docker exec <your-container-name> rnstatus
+docker exec rns-status-page rnstatus
 ```
+
+Should display interface stats.
 
 ## To-Do
 
-- [ ] More tracking over time and stats.
-- [ ] Get status using Reticulum directly instead of  `rnstatus` utility.
-- [ ] Stale server detection (node is up but no announces being recieved/sent).
-- [ ] Filter by reliability and uptime.
-- [ ] Micron Status Page.
-- [ ] Optional I2P, yggdrasil support (in docker).
-- [ ] Convert announces received/sent into a more readable format.
-- [ ] Add API security tests.
-- [ ] Memory and performance optimization.
-- [ ] History endpoint for changes over time.
-- [ ] Sqlite database instead of json for uptime and history.
-- [ ] Dedicated settings file to configure various things.
+- [ ] More tracking over time and stats
+- [ ] Stale server detection (node is up but no announces being received/sent)
+- [ ] Filter by reliability and uptime
+- [ ] Micron Status Page
+- [ ] Optional I2P, yggdrasil support (in docker)
+- [ ] Convert announces received/sent into a more readable format
+- [ ] Add API security tests
+- [ ] Memory and performance optimization
+- [ ] History endpoint for changes over time
+- [ ] Sqlite database instead of json for uptime and history
+- [ ] Dedicated settings file to configure various things
 
 ## API
 
@@ -107,9 +109,9 @@ Read the [API.md](API.md) file for more information on api usage.
 
 ## How it works
 
-1. starts `rnsd` in a seperate thread, unless `--no-rnsd` flag is used which it will use existing shared connection or rnsd instance.
-2. uses `rnstatus` to get the status of the Reticulum network using provided config file. 
-3. Flask and Gunicorn are used to serve the status page and API.
+1. Starts `rnsd` in a separate thread, unless `--no-rnsd` flag is used which will use existing shared connection or rnsd instance
+2. Uses Reticulum directly to get the status of interfaces/servers. (originally used `rnstatus` command output)
+3. Flask and Gunicorn are used to serve the status page and API
 
 ## Contributing
 
