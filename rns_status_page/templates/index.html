@@ -72,7 +72,13 @@
              hx-get="/api/status"
              hx-trigger="load, every 5s"
              hx-swap="innerHTML">
-            <!-- Status cards will be inserted here by HTMX -->
+            <div class="status-card loading-card">
+                <div class="loading-message">
+                    <div class="spinner"></div>
+                    <p>Initializing connection to Reticulum network...</p>
+                    <p class="loading-subtext">This may take a few moments while the network connection is established.</p>
+                </div>
+            </div>
         </div>
         <div id="last-updated" class="last-updated">
             <span id="update-time">Loading status...</span>
