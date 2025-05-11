@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "rns-status-page"
-version = "1.1.1"
+version = "1.1.2"
 description = "A Flask web server to display Reticulum network status."
 authors = ["Ivan <rns@quad4.io>"]
 readme = "README.md"
