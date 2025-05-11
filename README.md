@@ -68,13 +68,14 @@ docker exec rns-status-page rnstatus # or docker exec <your-container-name> rnst
 ## To-Do
 
 - [ ] More tracking and stats.
+- [ ] Stale server detection (node is up but no announces being recieved/sent).
 - [ ] Configuration for the status page and API.
 - [ ] Filter by reliability, uptime.
 - [ ] Micron Status Page.
-- [ ] Optional I2P, yggdrasil support.
-- [ ] Convert announces recieving/sent into a more readable format.
-- [ ] Add health endpoint.
-- [ ] Add security tests.
+- [ ] Optional I2P, yggdrasil support (in docker).
+- [ ] Convert announces recieved/sent into a more readable format.
+- [ ] Add API security tests.
+- [ ] Add docker-compose.yml.
 
 ## API
 
