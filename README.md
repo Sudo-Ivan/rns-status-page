@@ -20,7 +20,6 @@ Request to Add or Remove an Interface: Open a [Issue](https://github.com/Sudo-Iv
 - [Talisman](https://github.com/GoogleCloudPlatform/flask-talisman) for security headers.
 - Docker uses [Chainguard](https://github.com/chainguard-dev) images for rootless and distroless containers.
 
-
 ## Install
 
 ```bash
@@ -89,15 +88,17 @@ docker exec rns-status-page rnstatus # or docker exec <your-container-name> rnst
 
 ## To-Do
 
-- [ ] More tracking and stats.
+- [ ] More tracking over time and stats.
 - [ ] Stale server detection (node is up but no announces being recieved/sent).
 - [ ] Configuration for the status page and API.
-- [ ] Filter by reliability, uptime.
+- [ ] Filter by reliability and uptime.
 - [ ] Micron Status Page.
 - [ ] Optional I2P, yggdrasil support (in docker).
 - [ ] Convert announces recieved/sent into a more readable format.
 - [ ] Add API security tests.
 - [ ] Memory and performance optimization.
+- [ ] History endpoint for changes over time.
+- [ ] Dedicated settings file to configure various things.
 
 ## API
 
@@ -105,7 +106,7 @@ Read the [API.md](API.md) file for more information on api usage.
 
 ## How it works
 
-1. starts `rnsd` in a seperate thread.
+1. starts `rnsd` in a seperate thread, unless `--no-rnsd` flag is used which it will use existing instance.
 2. uses `rnstatus` to get the status of the Reticulum network using provided config file. 
 3. Flask and Gunicorn are used to serve the status page and API.
 
