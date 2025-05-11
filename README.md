@@ -106,7 +106,7 @@ Read the [API.md](API.md) file for more information on api usage.
 
 ## How it works
 
-1. starts `rnsd` in a seperate thread, unless `--no-rnsd` flag is used which it will use existing instance.
+1. starts `rnsd` in a seperate thread, unless `--no-rnsd` flag is used which it will use existing shared connection or rnsd instance.
 2. uses `rnstatus` to get the status of the Reticulum network using provided config file. 
 3. Flask and Gunicorn are used to serve the status page and API.
 
