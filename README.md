@@ -93,7 +93,7 @@ docker exec rns-status-page rnstatus # or docker exec <your-container-name> rnst
 - [ ] Filter by reliability and uptime.
 - [ ] Micron Status Page.
 - [ ] Optional I2P, yggdrasil support (in docker).
-- [ ] Convert announces recieved/sent into a more readable format.
+- [ ] Convert announces received/sent into a more readable format.
 - [ ] Add API security tests.
 - [ ] Memory and performance optimization.
 - [ ] History endpoint for changes over time.
