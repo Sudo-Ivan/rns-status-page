@@ -1,6 +1,6 @@
 # Reticulum Status Page
 
-[![Socket Badge](https://socket.dev/api/badge/pypi/package/rns-status-page/1.1.0?artifact_id=tar-gz)](https://socket.dev/pypi/package/rns-status-page/overview/)
+[![Socket Badge](https://socket.dev/api/badge/pypi/package/rns-status-page/1.1.2?artifact_id=tar-gz)](https://socket.dev/pypi/package/rns-status-page/overview/)
 
 
 [Reticulum](https://reticulum.network/) status page using `rnstatus` and `rnsd` from the utilities. Built using Flask, Gunicorn, and HTMX.
@@ -39,6 +39,23 @@ docker run -d --name rns-status-page -p 5000:5000 -v ./uptime.json:/home/nonroot
 If you have existing config, `chown 65532:65532 uptime.json`
 
 Replace `docker` with `podman` if you are using podman.
+
+### Docker Compose
+
+```bash
+# Create uptime.json with correct permissions
+touch ./uptime.json
+chown 65532:65532 ./uptime.json
+
+# Start the service
+docker compose up -d
+```
+
+The compose configuration includes:
+- Resource limits (CPU/Memory)
+- Security capabilities (NET_ADMIN, NET_RAW)
+- Health checks
+- Automatic restart policy
 
 ### Debugging
 
