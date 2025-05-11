@@ -31,10 +31,14 @@ docker run -d --name rns-status-page -p 5000:5000 ghcr.io/sudo-ivan/rns-status-p
 ```
 
 ```bash
-docker run -d --name rns-status-page -p 5000:5000 -v ./uptime.json:/app/uptime.json ghcr.io/sudo-ivan/rns-status-page:latest
+touch ./uptime.json
+chown 65532:65532 ./uptime.json
+docker run -d --name rns-status-page -p 5000:5000 -v ./uptime.json:/home/nonroot/uptime.json ghcr.io/sudo-ivan/rns-status-page:latest
 ```
 
-replace `docker` with `podman` if you are using podman.
+If you have existing config, `chown 65532:65532 uptime.json`
+
+Replace `docker` with `podman` if you are using podman.
 
 ### Debugging
 
@@ -51,9 +55,9 @@ docker exec rns-status-page rnstatus # or docker exec <your-container-name> rnst
 - [ ] Filter by reliability, uptime.
 - [ ] Micron Status Page.
 - [ ] Optional I2P, yggdrasil support.
-- [ ] non-root Dockerfile
 - [ ] Convert announces recieving/sent into a more readable format.
 - [ ] Add health endpoint.
+- [ ] Add security tests.
 
 ## API
 
