@@ -284,6 +284,12 @@ def get_rnstatus_from_command():
             )
             if result.stderr:
                 error_detail += f"\nError output: {result.stderr.strip()}"
+            
+            if result.returncode == 2:
+                error_detail += "\nrnstatus takes a while to initialize, please wait at least 5 minutes."
+            elif result.returncode == 1:
+                error_detail += "\ncannot connect to a rnsd or shared connection instance"
+            
             logger.error(error_detail)
             return f"Error: {error_detail}"
 
