@@ -26,7 +26,7 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler('status_page.log')
+        logging.FileHandler(os.path.abspath('status_page.log'))
     ]
 )
 logger = logging.getLogger(__name__)
@@ -80,7 +80,7 @@ CACHE_DURATION_SECONDS = 30
 RETRY_INTERVAL_SECONDS = 30
 SSE_UPDATE_INTERVAL_SECONDS = 5
 
-UPTIME_FILE_PATH = 'uptime.json'
+UPTIME_FILE_PATH = os.path.abspath('uptime.json')
 
 def load_uptime_tracker(filepath):
     """Load uptime tracker data from a JSON file.
@@ -159,10 +159,13 @@ def run_rnsd():
             return False
 
         logger.info("Starting rnsd daemon...")
-        _rnsd_process = subprocess.Popen([rnsd_path],  # nosec B603
-                                       stdout=subprocess.PIPE,
-                                       stderr=subprocess.PIPE,
-                                       text=True)
+        _rnsd_process = subprocess.Popen(
+            [rnsd_path],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            shell=False  # nosec B603
+        )
 
         time.sleep(2)
 
@@ -203,10 +206,13 @@ def check_rnstatus_installation():
         return False, "rnstatus command not found in PATH"
 
     try:
-        result = subprocess.run([rnstatus_path, '--help'],  # nosec B603
-                              capture_output=True,
-                              text=True,
-                              timeout=5)
+        result = subprocess.run(
+            [rnstatus_path, '--help'],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            shell=False  # nosec B603
+        )
         if result.returncode != 0:
             return False, f"rnstatus command failed with return code {result.returncode}"
         return True, "rnstatus is installed and accessible"
@@ -232,11 +238,14 @@ def get_rnstatus_from_command():
         if not rnstatus_path:
             return "Error: rnstatus command not found in PATH"
 
-        result = subprocess.run([rnstatus_path, '-A'],  # nosec B603
-                              capture_output=True,
-                              text=True,
-                              timeout=30,
-                              env=dict(os.environ, PYTHONUNBUFFERED="1"))
+        result = subprocess.run(
+            [rnstatus_path, '-A'],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            env=dict(os.environ, PYTHONUNBUFFERED="1"),
+            shell=False  # nosec B603
+        )
 
         if result.returncode != 0:
             error_detail = f"rnstatus command failed with return code {result.returncode}"
@@ -403,11 +412,11 @@ def parse_rnstatus(output, current_uptime_tracker):
                         idx += 1
             elif key == "Announces":
                 if idx < len(lines):
-                    next_line_content = lines[idx] 
+                    next_line_content = lines[idx]
                     if next_line_content and next_line_content[0].isspace() and "↓" in next_line_content:
                         value += f"\n{next_line_content.strip()}"
                         idx += 1
-            
+
             if key == "Status":
                 new_status = 'Up' if 'Up' in value else 'Down'
                 target_section = sections[current_section_title]
@@ -604,10 +613,10 @@ def index():
     """Render the main status page."""
     data = get_status_data_with_caching()
     up_count, down_count, total_count = count_interfaces(data['data'])
-    
+
     meta_description = f"Reticulum Network Status - Up: {up_count} Down: {down_count} Total: {total_count}"
-    
-    return render_template('index.html', 
+
+    return render_template('index.html',
                          up_count=up_count,
                          down_count=down_count,
                          total_count=total_count,
@@ -831,7 +840,7 @@ def main():
             """Load the application."""
             return self.application
 
-    temp_dir = tempfile.mkdtemp(prefix='gunicorn_')
+    temp_dir = os.path.abspath(tempfile.mkdtemp(prefix='gunicorn_'))
     try:
         options = {
             'bind': f'0.0.0.0:{port}',
