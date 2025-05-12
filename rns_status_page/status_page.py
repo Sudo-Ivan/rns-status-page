@@ -3,7 +3,6 @@
 This script creates a web server that displays Reticulum network status
 information using rnstatus command output.
 """
-
 import argparse
 import base64
 import hashlib
@@ -12,7 +11,6 @@ import logging
 import os
 import shutil
 import subprocess  # nosec B404
-import sys
 import tempfile
 import threading
 import time
@@ -92,6 +90,8 @@ SSE_UPDATE_INTERVAL_SECONDS = 5
 
 UPTIME_FILE_PATH = os.path.abspath("uptime.json")
 
+STALE_THRESHOLD_MINUTES = 15
+
 
 def size_str(num, suffix="B"):
     """Format number to human readable size string."""
@@ -142,7 +142,6 @@ def load_uptime_tracker(filepath):
 
     Returns:
         dict: The loaded uptime tracker data, or an empty dictionary if loading fails.
-
     """
     if os.path.exists(filepath):
         try:
@@ -175,7 +174,6 @@ def save_uptime_tracker(filepath, data):
     Args:
         filepath (str): The path to the JSON file.
         data (dict): The uptime tracker data to save.
-
     """
     temp_filepath = None
     try:
@@ -215,7 +213,6 @@ def run_rnsd():
 
     Returns:
         bool: True if rnsd started successfully, False otherwise.
-
     """
     global _rnsd_process
 
@@ -285,6 +282,7 @@ def _init_rns_instance(max_retries=5, retry_delay=1.0):
         attempts = max_retries if is_rnsd_managed_locally else 1
 
         def try_connect_shared():
+            """Attempt to connect to a shared RNS instance."""
             try:
                 instance = RNS.Reticulum(require_shared_instance=True)
                 logger.info("Successfully connected to shared RNS instance.")
@@ -326,13 +324,13 @@ def _get_rns_stats_direct(max_retries=3, retry_delay=25):
 
     Returns:
         dict: A dictionary containing interface statistics, or an error dictionary.
-
     """
     rns_instance = _init_rns_instance()
     if not rns_instance:
         return {"error": "Reticulum instance not available. Cannot fetch stats."}
 
     def try_get_stats():
+        """Attempt to get RNS statistics."""
         try:
             stats = rns_instance.get_interface_stats()
             if not stats or "interfaces" not in stats:
@@ -392,7 +390,6 @@ def _parse_rns_stats_dict(stats_dict, current_uptime_tracker):
 
     Returns:
         tuple: A tuple containing the parsed data (dict) and the updated uptime tracker (dict).
-
     """
     parsed_interfaces = {}
     updated_tracker = current_uptime_tracker.copy()
@@ -629,7 +626,6 @@ def get_and_cache_rnstatus_data():
 
     Returns:
         tuple: A tuple containing the parsed data and the current time.
-
     """
     raw_stats_dict = _get_rns_stats_direct()
 
@@ -687,7 +683,6 @@ def get_status_data_with_caching():
 
     Returns:
         dict: A dictionary containing the timestamp, data, and debug information.
-
     """
     start_process_time = time.time()
     with _cache["lock"]:
@@ -725,11 +720,64 @@ def sanitize_html(text):
 
     Returns:
         str: Sanitized text.
-
     """
     if not isinstance(text, str):
         return str(text)
     return bleach.clean(text, strip=True)
+
+
+def is_node_stale(info, current_time):
+    """Check if a node is stale based on its traffic and announce activity.
+    
+    Args:
+        info (dict): The interface information dictionary
+        current_time (float): Current timestamp
+        
+    Returns:
+        tuple: (is_stale, last_activity_time, reason)
+    """
+    if info["status"] != "Up":
+        return False, None, None
+
+    last_activity = None
+    reason = []
+
+    traffic = info.get("details", {}).get("Traffic", "")
+    if traffic:
+        try:
+            parts = traffic.split("\n")
+            if len(parts) >= 2:
+                tx_parts = parts[0].split()
+                rx_parts = parts[1].split()
+                if len(tx_parts) >= 2 and len(rx_parts) >= 2:
+                    tx_speed = float(tx_parts[1])
+                    rx_speed = float(rx_parts[1])
+                    if tx_speed == 0 and rx_speed == 0:
+                        reason.append("no traffic")
+        except (ValueError, IndexError):
+            pass
+
+    announces = info.get("details", {}).get("Announces", "")
+    if announces:
+        try:
+            parts = announces.split("\n")
+            if len(parts) >= 2:
+                tx_freq = float(parts[0].split()[0])
+                rx_freq = float(parts[1].split()[0])
+                if tx_freq == 0 and rx_freq == 0:
+                    reason.append("no announces")
+        except (ValueError, IndexError):
+            pass
+
+    if info.get("first_up_timestamp"):
+        last_activity = info["first_up_timestamp"]
+
+    if reason and last_activity:
+        time_diff = current_time - last_activity
+        if time_diff > STALE_THRESHOLD_MINUTES * 60:
+            return True, last_activity, " and ".join(reason)
+
+    return False, None, None
 
 
 def create_status_card(section, info):
@@ -741,9 +789,16 @@ def create_status_card(section, info):
 
     Returns:
         str: The HTML for the status card.
-
     """
-    status_class = "status-up" if info["status"] == "Up" else "status-down"
+    current_time = time.time()
+    is_stale, last_activity, stale_reason = is_node_stale(info, current_time)
+
+    if is_stale:
+        status_class = "status-stale"
+        status_text = "Stale"
+    else:
+        status_class = "status-up" if info["status"] == "Up" else "status-down"
+        status_text = info["status"]
 
     card_title = sanitize_html(info["name"])
     address_value = None
@@ -771,6 +826,20 @@ def create_status_card(section, info):
                 <span class="detail-label">Uptime</span>
                 <span class="detail-value">Unknown (interface is up)</span>
             </div>
+        """
+
+    stale_button_html = ""
+    if is_stale and last_activity:
+        last_activity_time = datetime.fromtimestamp(last_activity)
+        stale_button_html = f"""
+            <button class="stale-button" title="Node appears stale">
+                <svg viewBox="0 0 24 24">
+                    <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                </svg>
+                <div class="stale-tooltip">
+                    ⚠️ {sanitize_html(stale_reason)} since {sanitize_html(last_activity_time.strftime("%Y-%m-%d %H:%M:%S"))}
+                </div>
+            </button>
         """
 
     details_html_parts = []
@@ -815,6 +884,7 @@ def create_status_card(section, info):
     return f"""
         <div class="status-card" data-section-name="{sanitize_html(info["section_type"].lower())}" data-interface-name="{sanitize_html(info["name"].lower())}">
             {buttons_html}
+            {stale_button_html}
             <div class="card-content">
                 <h2 title="{sanitize_html(info["name"])}">
                     <span class="status-indicator {status_class}"></span>
