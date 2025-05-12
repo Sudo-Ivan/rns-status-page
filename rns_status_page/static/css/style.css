@@ -322,3 +322,27 @@ body {
 .count-separator {
     color: #666;
 }
+
+.clickable {
+    cursor: pointer;
+    color: var(--up-color);
+    transition: opacity 0.2s ease;
+}
+
+.clickable.down {
+    color: var(--down-color);
+}
+
+.clickable:hover {
+    opacity: 0.8;
+}
+
+.version {
+    color: var(--up-color);
+    text-decoration: none;
+    transition: opacity 0.2s ease;
+}
+
+.version:hover {
+    opacity: 0.8;
+}

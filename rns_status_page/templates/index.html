@@ -60,9 +60,9 @@
                 </a>
             </div>
             <div class="interface-counts">
-                <span>Up: {{ up_count|e }}</span>
+                <span class="clickable" onclick="filterStatus('up')">Up: {{ up_count|e }}</span>
                 <span class="count-separator">|</span>
-                <span>Down: {{ down_count|e }}</span>
+                <span class="clickable down" onclick="filterStatus('down')">Down: {{ down_count|e }}</span>
                 <span class="count-separator">|</span>
                 <span>Total: {{ total_count|e }}</span>
             </div>
@@ -83,7 +83,7 @@
         <div id="last-updated" class="last-updated">
             <span id="update-time">Loading status...</span>
             <span class="footer-separator">|</span>
-            <span class="version">v1.3.0</span>
+            <a href="https://github.com/Sudo-Ivan/rns-status-page" class="version" target="_blank">v1.3.0</a>
             <span class="footer-separator">|</span>
             <span class="logging-info">Requests are not logged</span>
             <span class="footer-separator">|</span>
@@ -97,10 +97,25 @@
         document.body.addEventListener('htmx:afterSwap', function(evt) {
             if (evt.detail.target.id === 'status-grid') {
                 const now = new Date();
-                document.getElementById('update-time').textContent = 
-                    `Last updated: ${now.toLocaleTimeString()}`;
+                document.getElementById('update-time').textContent = `Last updated: ${now.toLocaleTimeString()}`;
             }
         });
+
+        function filterStatus(status) {
+            const cards = document.querySelectorAll('.status-card');
+            cards.forEach(card => {
+                const statusIndicator = card.querySelector('.status-indicator');
+                if (statusIndicator) {
+                    if (status === 'up' && statusIndicator.classList.contains('status-up')) {
+                        card.style.display = 'block';
+                    } else if (status === 'down' && statusIndicator.classList.contains('status-down')) {
+                        card.style.display = 'block';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                }
+            });
+        }
     </script>
 </body>
 </html> 
