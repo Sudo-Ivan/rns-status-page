@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.3.1
+
+- Made version number link back to github repo.
+- Made Up and Down colored and clickable to filter out interfaces.
+- Improved Gunicorn temp directory handling.
+- Increase rate limits to 30 for `/api/status`.
+
 ## 1.3.0
 
 - Use Reticulum directly to get the status of interfaces/servers.

@@ -8,7 +8,7 @@ with open("requirements.txt", encoding="utf-8") as f:
 
 setuptools.setup(
     name="rns-status-page",
-    version="1.3.0",
+    version="1.3.1",
     author="Ivan",
     author_email="rns@quad4.io",
     description="A Flask web server to display Reticulum network status.",
