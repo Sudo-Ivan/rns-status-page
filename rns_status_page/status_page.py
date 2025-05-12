@@ -926,7 +926,7 @@ def index():
 
 
 @app.route("/api/status")
-@limiter.limit("10 per minute")
+@limiter.limit("30 per minute")
 def status():
     """Return the current status as HTML or JSON via an API endpoint."""
     data_payload = get_status_data_with_caching()
@@ -1186,7 +1186,15 @@ def main():
             """Load the application."""
             return self.application
 
-    temp_dir = os.path.abspath(tempfile.mkdtemp(prefix="gunicorn_"))
+    temp_dir = os.path.abspath(os.path.join(tempfile.gettempdir(), "gunicorn_rns_status"))
+    try:
+        os.makedirs(temp_dir, exist_ok=True)
+        logger.info(f"Using persistent temporary directory: {temp_dir}")
+    except Exception as e:
+        logger.error(f"Failed to create persistent temp directory: {e}")
+        temp_dir = os.path.abspath(tempfile.mkdtemp(prefix="gunicorn_"))
+        logger.info(f"Falling back to temporary directory: {temp_dir}")
+
     try:
         options = {
             "bind": f"0.0.0.0:{port}",
@@ -1215,17 +1223,19 @@ def main():
     finally:
         if managed_rnsd:
             stop_rnsd()
-        try:
-            shutil.rmtree(temp_dir)
-            logger.info(f"Successfully cleaned up temporary directory: {temp_dir}")
-        except FileNotFoundError:
-            logger.info(
-                f"Temporary directory {temp_dir} was not found during cleanup. It might have been removed by another process or Gunicorn."
-            )
-        except Exception as e:
-            logger.error(
-                f"Unexpected error cleaning up temporary directory {temp_dir}: {e}"
-            )
+        # Only try to remove the temp directory if it's not our persistent one
+        if temp_dir != os.path.abspath(os.path.join(tempfile.gettempdir(), "gunicorn_rns_status")):
+            try:
+                shutil.rmtree(temp_dir)
+                logger.info(f"Successfully cleaned up temporary directory: {temp_dir}")
+            except FileNotFoundError:
+                logger.info(
+                    f"Temporary directory {temp_dir} was not found during cleanup. It might have been removed by another process or Gunicorn."
+                )
+            except Exception as e:
+                logger.error(
+                    f"Unexpected error cleaning up temporary directory {temp_dir}: {e}"
+                )
 
     with _cache["lock"]:
         if _cache["rns_instance"] is not None:
