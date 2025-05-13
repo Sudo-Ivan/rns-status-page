@@ -1,6 +1,7 @@
 # Reticulum Status Page
 
 [![Socket Badge](https://socket.dev/api/badge/pypi/package/rns-status-page/1.1.2?artifact_id=tar-gz)](https://socket.dev/pypi/package/rns-status-page/overview/)
+[![Status Page](https://status.quad4.io/badge/rstatus/status?labelColor=&color=&style=flat&label=rstatus)](https://status.quad4.io)
 
 [Reticulum](https://reticulum.network/) status page using direct Reticulum library integration and `rnsd` from the utilities. Built using Flask, Gunicorn, and HTMX.
 
