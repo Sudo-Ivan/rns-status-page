@@ -159,4 +159,9 @@
     target_host = dublin.connect.reticulum.network
     target_port = 4965
 
-  
+  [[Dead Guru]]
+    type = TCPClientInterface
+    enabled = yes
+    target_host = dead.guru
+    target_port = 4242
+
