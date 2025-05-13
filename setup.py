@@ -30,7 +30,7 @@ setuptools.setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    python_requires=">=3.6",
+    python_requires=">=3.13",
     entry_points={
         "console_scripts": [
             "rns-status-page=rns_status_page.status_page:main",
