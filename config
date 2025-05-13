@@ -165,3 +165,9 @@
     target_host = dead.guru
     target_port = 4242
 
+  [[RNS Transport US West (The ARK)]]
+    type = TCPClientInterface
+    enabled = yes
+    target_host = 5.78.89.178
+    target_port = 4242
+
