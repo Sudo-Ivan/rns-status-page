@@ -7,6 +7,9 @@
 
 Request to Add or Remove an Interface: Open a [Issue](https://github.com/Sudo-Ivan/rns-status-page/issues/new) or message me on Reticulum `c0cdcb64499e4f0d544ff87c9d5e2485` this only applies to my instance at [rstatus.quad4.io](https://rstatus.quad4.io)
 
+> [!NOTE]  
+> [rstatus.quad4.io](https://rstatus.quad4.io/) is protected by [BunkerWeb](https://www.bunkerweb.io/), requests are logged in order to prevent abuse, bots and LLM scrapers.
+
 ## Features
 
 - Check status of Reticulum interfaces.
