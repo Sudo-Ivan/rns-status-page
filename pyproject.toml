@@ -26,6 +26,7 @@ flask-limiter = "3.12"
 rns = "0.9.5"
 flask-cors = "^5.0.1"
 bleach = "^6.2.0"
+werkzeug = "^3.1.3"
 
 [tool.poetry.scripts]
 rns-status-page = "rns_status_page.status_page:main"
