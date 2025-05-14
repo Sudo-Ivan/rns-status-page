@@ -25,6 +25,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_talisman import Talisman
 from RNS.Interfaces.Interface import Interface as RNSInterface
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 logging.basicConfig(
     level=logging.INFO,
@@ -39,6 +40,27 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 app = Flask(__name__)
+
+app.wsgi_app = ProxyFix(
+    app.wsgi_app, 
+    x_for=1,      
+    x_proto=1,    
+    x_host=1,     
+    x_prefix=1,   
+    x_port=1      
+)
+
+@app.before_request
+def log_request_info():
+    headers = dict(request.headers)
+    scheme_related_headers = {
+        k: v for k, v in headers.items() 
+        if any(scheme in k.lower() for scheme in ['forwarded', 'scheme', 'proto'])
+    }
+    if scheme_related_headers:
+        logger.info(f"Scheme-related headers: {scheme_related_headers}")
+        logger.info(f"Request scheme: {request.scheme}")
+        logger.info(f"Request URL: {request.url}")
 
 CORS(
     app,
@@ -1281,6 +1303,11 @@ def main():
             "graceful_timeout": 30,
             "preload_app": True,
             "forwarded_allow_ips": "*",
+            "secure_scheme_headers": {
+                'X-FORWARDED-PROTOCOL': 'https',
+                'X-FORWARDED-PROTO': 'https',
+                'X-FORWARDED-SSL': 'on'
+            },
             "proxy_protocol": True,
             "proxy_allow_ips": "*",
             "limit_request_line": 4094,
