@@ -18,7 +18,7 @@ ENV PYTHONPATH="/app"
 
 WORKDIR /app
 
-RUN pip3 install setuptools-rust pyopenssl cryptography rns>=0.9.5
+RUN pip3 install setuptools-rust pyopenssl cryptography rns>=0.9.6
 
 COPY requirements.txt .
 RUN pip3 install -r requirements.txt
