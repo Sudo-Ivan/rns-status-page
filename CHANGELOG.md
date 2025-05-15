@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.2
+
+- Update RNS to 0.9.6
+
 ## 1.3.1
 
 - Made version number link back to github repo.
