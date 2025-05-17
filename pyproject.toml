@@ -24,7 +24,7 @@ gunicorn = "23.0.0"
 flask-talisman = "1.1.0"
 flask-limiter = "3.12"
 rns = "0.9.6"
-flask-cors = "^5.0.1"
+flask-cors = ">=5.0.1,<7.0.0"
 bleach = "^6.2.0"
 werkzeug = "^3.1.3"
 
