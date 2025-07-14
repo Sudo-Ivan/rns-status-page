@@ -2,6 +2,7 @@
 
 [![Build and Publish Docker Image](https://github.com/Sudo-Ivan/rns-status-page/actions/workflows/docker.yml/badge.svg)](https://github.com/Sudo-Ivan/rns-status-page/actions/workflows/docker.yml)
 [![Socket Badge](https://socket.dev/api/badge/pypi/package/rns-status-page/1.1.2?artifact_id=tar-gz)](https://socket.dev/pypi/package/rns-status-page/overview/)
+[![DeepSource](https://app.deepsource.com/gh/Sudo-Ivan/rns-status-page.svg/?label=code+coverage&show_trend=true&token=KkPl8dmgLrQhOIP9tmkiyPgP)](https://app.deepsource.com/gh/Sudo-Ivan/rns-status-page/)
 
 [Reticulum](https://reticulum.network/) status page using direct Reticulum library integration and `rnsd` from the utilities. Built using Flask, Gunicorn, and HTMX.
 
