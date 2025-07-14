@@ -1,5 +1,6 @@
 # Reticulum Status Page
 
+[![Build and Publish Docker Image](https://github.com/Sudo-Ivan/rns-status-page/actions/workflows/docker.yml/badge.svg)](https://github.com/Sudo-Ivan/rns-status-page/actions/workflows/docker.yml)
 [![Socket Badge](https://socket.dev/api/badge/pypi/package/rns-status-page/1.1.2?artifact_id=tar-gz)](https://socket.dev/pypi/package/rns-status-page/overview/)
 
 [Reticulum](https://reticulum.network/) status page using direct Reticulum library integration and `rnsd` from the utilities. Built using Flask, Gunicorn, and HTMX.
@@ -20,7 +21,7 @@
 ## Install
 
 ```bash
-pip install rns-status-page
+pipx install rns-status-page
 ```
 
 ## Usage
