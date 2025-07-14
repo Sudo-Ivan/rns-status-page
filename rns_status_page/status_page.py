@@ -3,6 +3,7 @@
 This script creates a web server that displays Reticulum network status
 information using rnstatus command output.
 """
+
 import argparse
 import base64
 import hashlib
@@ -10,7 +11,7 @@ import json
 import logging
 import os
 import shutil
-import subprocess  # nosec B404
+import subprocess  # nosec B404, S603
 import tempfile
 import threading
 import time
@@ -42,25 +43,23 @@ load_dotenv()
 app = Flask(__name__)
 
 app.wsgi_app = ProxyFix(
-    app.wsgi_app, 
-    x_for=1,      
-    x_proto=1,    
-    x_host=1,     
-    x_prefix=1,   
-    x_port=1      
+    app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1, x_port=1
 )
+
 
 @app.before_request
 def log_request_info():
     headers = dict(request.headers)
     scheme_related_headers = {
-        k: v for k, v in headers.items() 
-        if any(scheme in k.lower() for scheme in ['forwarded', 'scheme', 'proto'])
+        k: v
+        for k, v in headers.items()
+        if any(scheme in k.lower() for scheme in ["forwarded", "scheme", "proto"])
     }
     if scheme_related_headers:
         logger.info(f"Scheme-related headers: {scheme_related_headers}")
         logger.info(f"Request scheme: {request.scheme}")
         logger.info(f"Request URL: {request.url}")
+
 
 CORS(
     app,
@@ -245,7 +244,7 @@ def run_rnsd():
             return False
 
         logger.info("Starting rnsd daemon...")
-        _rnsd_process = subprocess.Popen(
+        _rnsd_process = subprocess.Popen(  # nosec S603
             [rnsd_path],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -750,11 +749,11 @@ def sanitize_html(text):
 
 def is_node_stale(info, current_time):
     """Check if a node is stale based on its traffic and announce activity.
-    
+
     Args:
         info (dict): The interface information dictionary
         current_time (float): Current timestamp
-        
+
     Returns:
         tuple: (is_stale, last_activity_time, reason)
     """
@@ -817,10 +816,8 @@ def create_status_card(section, info):
 
     if is_stale:
         status_class = "status-stale"
-        status_text = "Stale"
     else:
         status_class = "status-up" if info["status"] == "Up" else "status-down"
-        status_text = info["status"]
 
     card_title = sanitize_html(info["name"])
     address_value = None
@@ -1278,7 +1275,9 @@ def main():
             """Load the application."""
             return self.application
 
-    temp_dir = os.path.abspath(os.path.join(tempfile.gettempdir(), "gunicorn_rns_status"))
+    temp_dir = os.path.abspath(
+        os.path.join(tempfile.gettempdir(), "gunicorn_rns_status")
+    )
     try:
         os.makedirs(temp_dir, exist_ok=True)
         logger.info(f"Using persistent temporary directory: {temp_dir}")
@@ -1304,9 +1303,9 @@ def main():
             "preload_app": True,
             "forwarded_allow_ips": "*",
             "secure_scheme_headers": {
-                'X-FORWARDED-PROTOCOL': 'https',
-                'X-FORWARDED-PROTO': 'https',
-                'X-FORWARDED-SSL': 'on'
+                "X-FORWARDED-PROTOCOL": "https",
+                "X-FORWARDED-PROTO": "https",
+                "X-FORWARDED-SSL": "on",
             },
             "proxy_protocol": True,
             "proxy_allow_ips": "*",
@@ -1321,7 +1320,9 @@ def main():
         if managed_rnsd:
             stop_rnsd()
         # Only try to remove the temp directory if it's not our persistent one
-        if temp_dir != os.path.abspath(os.path.join(tempfile.gettempdir(), "gunicorn_rns_status")):
+        if temp_dir != os.path.abspath(
+            os.path.join(tempfile.gettempdir(), "gunicorn_rns_status")
+        ):
             try:
                 shutil.rmtree(temp_dir)
                 logger.info(f"Successfully cleaned up temporary directory: {temp_dir}")
