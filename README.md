@@ -116,4 +116,4 @@ All contributions are welcome!
 
 ## License
 
-MIT 
+[MIT](LICENSE)
