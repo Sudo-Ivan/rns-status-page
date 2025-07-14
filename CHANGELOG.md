@@ -1,8 +1,14 @@
 # Changelog
 
+## 1.4.0
+
+- Update RNS to `1.0.0`
+- Regenerate `poetry.lock`
+- Code cleanup
+
 ## 1.3.2
 
-- Update RNS to 0.9.6
+- Update RNS to `0.9.6`
 
 ## 1.3.1
 
