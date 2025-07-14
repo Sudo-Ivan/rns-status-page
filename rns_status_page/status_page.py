@@ -396,15 +396,13 @@ def _get_rns_stats_direct(max_retries=3, retry_delay=25):
                 with _cache["lock"]:
                     _cache["rns_instance"] = None
                 return {
-                    "error": "Failed to fetch stats from RNS after multiple retries: %s"
-                    % result["details"]
+                    "error": f"Failed to fetch stats from RNS after multiple retries: {result['details']}"
                 }
             else:
                 with _cache["lock"]:
                     _cache["rns_instance"] = None
                 return {
-                    "error": "Error fetching stats directly from RNS: %s"
-                    % result["details"]
+                    "error": f"Error fetching stats directly from RNS: {result['details']}"
                 }
 
     return {
@@ -606,7 +604,7 @@ def _parse_rns_stats_dict(stats_dict, current_uptime_tracker):
                 e,
             )
             parsed_interfaces[
-                ifstat.get("name", "error_interface_%s" % time.time())
+                ifstat.get("name", f"error_interface_{time.time()}")
             ] = {
                 "name": ifstat.get("name", "Error Interface"),
                 "section_type": "Error",
