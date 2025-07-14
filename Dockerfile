@@ -12,23 +12,31 @@ RUN apk add --no-cache \
     pkgconf \
     linux-headers
 
+# Install Poetry
+RUN pip install poetry
+
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 ENV PYTHONPATH="/app"
 
 WORKDIR /app
 
-RUN pip3 install setuptools-rust pyopenssl cryptography rns>=0.9.6
+# Copy pyproject.toml and poetry.lock
+COPY pyproject.toml poetry.lock ./
 
-COPY requirements.txt .
-RUN pip3 install -r requirements.txt
+# Install dependencies using Poetry
+RUN poetry install --no-root
 
+# Copy project files
 COPY rns_status_page ./rns_status_page/
-COPY setup.py .
 COPY README.md .
 COPY LICENSE .
 
-RUN pip3 install -e .
+# Build the project
+RUN poetry build
+
+# Install the built wheel
+RUN pip install dist/*.whl
 
 RUN mkdir -p /home/nonroot/.reticulum
 COPY config /home/nonroot/.reticulum/config
