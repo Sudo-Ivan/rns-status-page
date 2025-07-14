@@ -56,9 +56,9 @@ def log_request_info():
         if any(scheme in k.lower() for scheme in ["forwarded", "scheme", "proto"])
     }
     if scheme_related_headers:
-        logger.info(f"Scheme-related headers: {scheme_related_headers}")
-        logger.info(f"Request scheme: {request.scheme}")
-        logger.info(f"Request URL: {request.url}")
+        logger.info("Scheme-related headers: %s", scheme_related_headers)
+        logger.info("Request scheme: %s", request.scheme)
+        logger.info("Request URL: %s", request.url)
 
 
 CORS(
@@ -169,21 +169,21 @@ def load_uptime_tracker(filepath):
             with open(filepath, encoding="utf-8") as f:
                 data = json.load(f)
                 if isinstance(data, dict):
-                    logger.info(f"Successfully loaded uptime tracker from {filepath}")
+                    logger.info("Successfully loaded uptime tracker from %s", filepath)
                     return data
                 else:
                     logger.warning(
-                        f"Corrupted uptime tracker file (not a dict): {filepath}. Starting fresh."
+                        "Corrupted uptime tracker file (not a dict): %s. Starting fresh.", filepath
                     )
                     return {}
         except json.JSONDecodeError:
             logger.warning(
-                f"Error decoding JSON from uptime tracker file: {filepath}. Starting fresh."
+                "Error decoding JSON from uptime tracker file: %s. Starting fresh.", filepath
             )
             return {}
         except Exception as e:
             logger.error(
-                f"Unexpected error loading uptime tracker from {filepath}: {e}. Starting fresh."
+                "Unexpected error loading uptime tracker from %s: %s. Starting fresh.", filepath, e
             )
             return {}
     return {}
@@ -205,15 +205,15 @@ def save_uptime_tracker(filepath, data):
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=4)
         shutil.move(temp_filepath, filepath)
-        logger.debug(f"Successfully saved uptime tracker to {filepath}")
+        logger.debug("Successfully saved uptime tracker to %s", filepath)
     except Exception as e:
-        logger.error(f"Error saving uptime tracker to {filepath}: {e}")
+        logger.error("Error saving uptime tracker to %s: %s", filepath, e)
         if temp_filepath and os.path.exists(temp_filepath):
             try:
                 os.remove(temp_filepath)
             except Exception as re:
                 logger.error(
-                    f"Error removing temporary uptime file {temp_filepath}: {re}"
+                    "Error removing temporary uptime file %s: %s", temp_filepath, re
                 )
 
 
@@ -256,7 +256,7 @@ def run_rnsd():
 
         if _rnsd_process.poll() is not None:
             stderr = _rnsd_process.stderr.read()
-            logger.error(f"rnsd failed to start: {stderr}")
+            logger.error("rnsd failed to start: %s", stderr)
             return False
 
         logger.info("rnsd daemon started successfully")
@@ -269,11 +269,11 @@ def run_rnsd():
         return False
     except OSError as e:
         logger.error(
-            f"Error starting rnsd due to an OS error: {e.strerror} (errno {e.errno})"
+            "Error starting rnsd due to an OS error: %s (errno %s)", e.strerror, e.errno
         )
         return False
     except Exception as e:
-        logger.error(f"Error starting rnsd: {e}")
+        logger.error("Error starting rnsd: %s", e)
         return False
 
 
@@ -309,7 +309,7 @@ def _init_rns_instance(max_retries=5, retry_delay=1.0):
                 logger.info("Successfully connected to shared RNS instance.")
                 return instance
             except Exception as e:
-                logger.warning(f"Could not connect to shared RNS instance: {e}")
+                logger.warning("Could not connect to shared RNS instance: %s", e)
                 return None
 
         for attempt in range(attempts):
@@ -321,7 +321,7 @@ def _init_rns_instance(max_retries=5, retry_delay=1.0):
             if not is_rnsd_managed_locally:
                 break
             if attempt < attempts - 1:
-                logger.info(f"Retrying in {retry_delay}s as rnsd is managed locally...")
+                logger.info("Retrying in %ss as rnsd is managed locally...", retry_delay)
                 time.sleep(retry_delay)
 
         if not is_rnsd_managed_locally:
@@ -332,7 +332,7 @@ def _init_rns_instance(max_retries=5, retry_delay=1.0):
                 _cache["rns_instance"] = rns_instance
                 return rns_instance
             except Exception as e_new:
-                logger.error(f"Failed to create a new RNS instance: {e_new}")
+                logger.error("Failed to create a new RNS instance: %s", e_new)
         else:
             logger.error("All attempts to connect to locally managed rnsd failed.")
 
@@ -869,7 +869,7 @@ def create_status_card(section, info):
 
     if info.get("details"):
         for key, value in info["details"].items():
-            if (key == "Announces" or key == "Traffic") and "\n" in value:
+            if key in ("Announces", "Traffic") and "\n" in value:
                 parts = value.split("\n")
                 if len(parts) >= 1:
                     details_html_parts.append(
