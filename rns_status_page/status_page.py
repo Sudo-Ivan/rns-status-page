@@ -173,17 +173,21 @@ def load_uptime_tracker(filepath):
                     return data
                 else:
                     logger.warning(
-                        "Corrupted uptime tracker file (not a dict): %s. Starting fresh.", filepath
+                        "Corrupted uptime tracker file (not a dict): %s. Starting fresh.",
+                        filepath,
                     )
                     return {}
         except json.JSONDecodeError:
             logger.warning(
-                "Error decoding JSON from uptime tracker file: %s. Starting fresh.", filepath
+                "Error decoding JSON from uptime tracker file: %s. Starting fresh.",
+                filepath,
             )
             return {}
         except Exception as e:
             logger.error(
-                "Unexpected error loading uptime tracker from %s: %s. Starting fresh.", filepath, e
+                "Unexpected error loading uptime tracker from %s: %s. Starting fresh.",
+                filepath,
+                e,
             )
             return {}
     return {}
@@ -321,7 +325,9 @@ def _init_rns_instance(max_retries=5, retry_delay=1.0):
             if not is_rnsd_managed_locally:
                 break
             if attempt < attempts - 1:
-                logger.info("Retrying in %ss as rnsd is managed locally...", retry_delay)
+                logger.info(
+                    "Retrying in %ss as rnsd is managed locally...", retry_delay
+                )
                 time.sleep(retry_delay)
 
         if not is_rnsd_managed_locally:
@@ -364,11 +370,13 @@ def _get_rns_stats_direct(max_retries=3, retry_delay=25):
             return stats
         except ConnectionRefusedError as e:
             logger.warning(
-                f"RNS instance still initializing or connection refused: {e}. Waiting {retry_delay} seconds before retry."
+                "RNS instance still initializing or connection refused: %s. Waiting %s seconds before retry.",
+                e,
+                retry_delay,
             )
             return {"error": "connection_refused", "details": str(e)}
         except Exception as e:
-            logger.error(f"Error fetching stats directly from RNS: {e}", exc_info=True)
+            logger.exception("Error fetching stats directly from RNS: %s", e)
             return {"error": "general_error", "details": str(e)}
 
     for attempt in range(max_retries):
@@ -378,7 +386,7 @@ def _get_rns_stats_direct(max_retries=3, retry_delay=25):
             return result
 
         if result["error"] == "connection_refused" and attempt < max_retries - 1:
-            logger.info(f"Retrying in {retry_delay}s...")
+            logger.info("Retrying in %ss...", retry_delay)
             time.sleep(retry_delay)
         else:
             if result["error"] == "connection_refused":
@@ -388,13 +396,15 @@ def _get_rns_stats_direct(max_retries=3, retry_delay=25):
                 with _cache["lock"]:
                     _cache["rns_instance"] = None
                 return {
-                    "error": f"Failed to fetch stats from RNS after multiple retries: {result['details']}"
+                    "error": "Failed to fetch stats from RNS after multiple retries: %s"
+                    % result["details"]
                 }
             else:
                 with _cache["lock"]:
                     _cache["rns_instance"] = None
                 return {
-                    "error": f"Error fetching stats directly from RNS: {result['details']}"
+                    "error": "Error fetching stats directly from RNS: %s"
+                    % result["details"]
                 }
 
     return {
@@ -590,11 +600,14 @@ def _parse_rns_stats_dict(stats_dict, current_uptime_tracker):
 
             parsed_interfaces[current_section_key_for_dict] = interface_details
         except Exception as e:
-            logger.error(
-                f"Error parsing interface stat for {ifstat.get('name', 'N/A')}: {e}",
-                exc_info=True,
+            logger.exception(
+                "Error parsing interface stat for %s: %s",
+                ifstat.get("name", "N/A"),
+                e,
             )
-            parsed_interfaces[ifstat.get("name", f"error_interface_{time.time()}")] = {
+            parsed_interfaces[
+                ifstat.get("name", "error_interface_%s" % time.time())
+            ] = {
                 "name": ifstat.get("name", "Error Interface"),
                 "section_type": "Error",
                 "status": "Unknown",
@@ -982,12 +995,20 @@ def calculate_file_hash(filepath):
         str: Base64 encoded hash.
 
     """
+    # Only allow hashing of the htmx.min.js file for security
+    expected_htmx_path = os.path.abspath(
+        os.path.join(app.static_folder, "vendor", "htmx.min.js")
+    )
+    if os.path.abspath(filepath) != expected_htmx_path:
+        logger.error("Attempted to hash an unauthorized file: %s", filepath)
+        return None
+
     try:
         with open(filepath, "rb") as f:
             file_hash = hashlib.sha384(f.read()).digest()
             return base64.b64encode(file_hash).decode("utf-8")
     except Exception as e:
-        logger.error(f"Error calculating file hash for {filepath}: {e}")
+        logger.error("Error calculating file hash for %s: %s", filepath, e)
         return None
 
 
@@ -1193,7 +1214,7 @@ def stream_status_events():
         except GeneratorExit:
             pass
         except Exception as e:
-            logger.error(f"Error in SSE stream: {e}", exc_info=True)
+            logger.exception("Error in SSE stream: %s", e)
             error_payload = json.dumps(
                 {"error": "Stream error occurred", "type": "SERVER_ERROR"}
             )
@@ -1220,7 +1241,7 @@ def main():
 
     port = int(os.getenv("PORT", 5000))
     workers = int(os.getenv("GUNICORN_WORKERS", 4))
-    logger.info(f"Starting server on port {port} with {workers} workers")
+    logger.info("Starting server on port %s with %s workers", port, workers)
 
     global _rnsd_thread
 
@@ -1238,7 +1259,8 @@ def main():
             managed_rnsd = True
             if managed_rnsd_env != "true":
                 logger.warning(
-                    f"MANAGED_RNSD environment variable set to '{managed_rnsd_env}', which is not 'false'. Defaulting to managing RNSD. Use 'true' or 'false'."
+                    "MANAGED_RNSD environment variable set to '%s', which is not 'false'. Defaulting to managing RNSD. Use 'true' or 'false'.",
+                    managed_rnsd_env,
                 )
 
     if managed_rnsd:
@@ -1280,11 +1302,11 @@ def main():
     )
     try:
         os.makedirs(temp_dir, exist_ok=True)
-        logger.info(f"Using persistent temporary directory: {temp_dir}")
+        logger.info("Using persistent temporary directory: %s", temp_dir)
     except Exception as e:
-        logger.error(f"Failed to create persistent temp directory: {e}")
+        logger.error("Failed to create persistent temp directory: %s", e)
         temp_dir = os.path.abspath(tempfile.mkdtemp(prefix="gunicorn_"))
-        logger.info(f"Falling back to temporary directory: {temp_dir}")
+        logger.info("Falling back to temporary directory: %s", temp_dir)
 
     try:
         options = {
@@ -1325,14 +1347,17 @@ def main():
         ):
             try:
                 shutil.rmtree(temp_dir)
-                logger.info(f"Successfully cleaned up temporary directory: {temp_dir}")
+                logger.info("Successfully cleaned up temporary directory: %s", temp_dir)
             except FileNotFoundError:
                 logger.info(
-                    f"Temporary directory {temp_dir} was not found during cleanup. It might have been removed by another process or Gunicorn."
+                    "Temporary directory %s was not found during cleanup. It might have been removed by another process or Gunicorn.",
+                    temp_dir,
                 )
             except Exception as e:
                 logger.error(
-                    f"Unexpected error cleaning up temporary directory {temp_dir}: {e}"
+                    "Unexpected error cleaning up temporary directory %s: %s",
+                    temp_dir,
+                    e,
                 )
 
     with _cache["lock"]:
