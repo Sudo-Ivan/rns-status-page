@@ -876,7 +876,8 @@ def create_status_card(section, info):
                     <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
                 </svg>
                 <div class="stale-tooltip">
-                    ⚠️ {sanitize_html(stale_reason)} since {sanitize_html(last_activity_time.strftime("%Y-%m-%d %H:%M:%S"))}
+                    ⚠️ Possibly outdated node<br>
+                    {sanitize_html(stale_reason)} since {sanitize_html(last_activity_time.strftime("%Y-%m-%d %H:%M:%S"))}
                 </div>
             </button>
         """
@@ -968,28 +969,34 @@ def format_duration(seconds):
 
 
 def count_interfaces(data):
-    """Count the number of up and down interfaces.
+    """Count the number of up, down, and stale interfaces.
 
     Args:
         data (dict): The interface data dictionary.
 
     Returns:
-        tuple: (up_count, down_count, total_count)
+        tuple: (up_count, down_count, stale_count, total_count)
 
     """
     up_count = 0
     down_count = 0
+    stale_count = 0
     total_count = 0
 
+    current_time = time.time()
     for info in data.values():
         if isinstance(info, dict) and "status" in info:
             total_count += 1
             if info["status"] == "Up":
                 up_count += 1
+                # Check if this up interface is stale
+                is_stale, _, _ = is_node_stale(info, current_time)
+                if is_stale:
+                    stale_count += 1
             else:
                 down_count += 1
 
-    return up_count, down_count, total_count
+    return up_count, down_count, stale_count, total_count
 
 
 def calculate_file_hash(filepath):
@@ -1024,9 +1031,9 @@ def calculate_file_hash(filepath):
 def index():
     """Render the main status page."""
     data = get_status_data_with_caching()
-    up_count, down_count, total_count = count_interfaces(data["data"])
+    up_count, down_count, stale_count, total_count = count_interfaces(data["data"])
 
-    meta_description = f"Reticulum Network Status - Up: {up_count} Down: {down_count} Total: {total_count}"
+    meta_description = f"Reticulum Network Status - Up: {up_count} Down: {down_count} Stale: {stale_count} Total: {total_count}"
 
     htmx_path = os.path.join(app.static_folder, "vendor", "htmx.min.js")
     htmx_integrity = calculate_file_hash(htmx_path)
@@ -1035,6 +1042,7 @@ def index():
         "index.html",
         up_count=up_count,
         down_count=down_count,
+        stale_count=stale_count,
         total_count=total_count,
         meta_description=meta_description,
         htmx_integrity=htmx_integrity,
