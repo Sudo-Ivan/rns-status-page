@@ -1,9 +1,0 @@
-flask==3.1.1
-rns==1.0.0
-python-dotenv==1.1.0
-gunicorn==23.0.0
-flask-talisman==1.1.0
-flask-limiter==3.12
-flask-cors==6.0.1
-bleach==6.2.0
-Werkzeug==3.1.3
