@@ -1,6 +1,6 @@
 [reticulum]
   
-  enable_transport = False
+  enable_transport = True
   
   share_instance = False
   
