@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   rns-status-page:
     image: ghcr.io/sudo-ivan/rns-status-page:latest
