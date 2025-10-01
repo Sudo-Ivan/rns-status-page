@@ -43,7 +43,7 @@ load_dotenv()
 app = Flask(__name__)
 
 app.wsgi_app = ProxyFix(
-    app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1, x_port=1
+    app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1, x_port=1,
 )
 
 
@@ -163,6 +163,7 @@ def load_uptime_tracker(filepath):
 
     Returns:
         dict: The loaded uptime tracker data, or an empty dictionary if loading fails.
+
     """
     if os.path.exists(filepath):
         try:
@@ -171,12 +172,11 @@ def load_uptime_tracker(filepath):
                 if isinstance(data, dict):
                     logger.info("Successfully loaded uptime tracker from %s", filepath)
                     return data
-                else:
-                    logger.warning(
-                        "Corrupted uptime tracker file (not a dict): %s. Starting fresh.",
-                        filepath,
-                    )
-                    return {}
+                logger.warning(
+                    "Corrupted uptime tracker file (not a dict): %s. Starting fresh.",
+                    filepath,
+                )
+                return {}
         except json.JSONDecodeError:
             logger.warning(
                 "Error decoding JSON from uptime tracker file: %s. Starting fresh.",
@@ -199,6 +199,7 @@ def save_uptime_tracker(filepath, data):
     Args:
         filepath (str): The path to the JSON file.
         data (dict): The uptime tracker data to save.
+
     """
     temp_filepath = None
     try:
@@ -217,7 +218,7 @@ def save_uptime_tracker(filepath, data):
                 os.remove(temp_filepath)
             except Exception as re:
                 logger.error(
-                    "Error removing temporary uptime file %s: %s", temp_filepath, re
+                    "Error removing temporary uptime file %s: %s", temp_filepath, re,
                 )
 
 
@@ -238,6 +239,7 @@ def run_rnsd():
 
     Returns:
         bool: True if rnsd started successfully, False otherwise.
+
     """
     global _rnsd_process
 
@@ -268,12 +270,12 @@ def run_rnsd():
 
     except FileNotFoundError:
         logger.error(
-            "rnsd command not found. Please ensure it is installed and in PATH."
+            "rnsd command not found. Please ensure it is installed and in PATH.",
         )
         return False
     except OSError as e:
         logger.error(
-            "Error starting rnsd due to an OS error: %s (errno %s)", e.strerror, e.errno
+            "Error starting rnsd due to an OS error: %s (errno %s)", e.strerror, e.errno,
         )
         return False
     except Exception as e:
@@ -287,7 +289,7 @@ def stop_rnsd():
 
     if not _rnsd_process:
         logger.debug(
-            "stop_rnsd called but _rnsd_process is not set, implying RNSD was not started by this script or already stopped."
+            "stop_rnsd called but _rnsd_process is not set, implying RNSD was not started by this script or already stopped.",
         )
         return
 
@@ -326,7 +328,7 @@ def _init_rns_instance(max_retries=5, retry_delay=1.0):
                 break
             if attempt < attempts - 1:
                 logger.info(
-                    "Retrying in %ss as rnsd is managed locally...", retry_delay
+                    "Retrying in %ss as rnsd is managed locally...", retry_delay,
                 )
                 time.sleep(retry_delay)
 
@@ -351,6 +353,7 @@ def _get_rns_stats_direct(max_retries=3, retry_delay=25):
 
     Returns:
         dict: A dictionary containing interface statistics, or an error dictionary.
+
     """
     rns_instance = _init_rns_instance()
     if not rns_instance:
@@ -362,10 +365,10 @@ def _get_rns_stats_direct(max_retries=3, retry_delay=25):
             stats = rns_instance.get_interface_stats()
             if not stats or "interfaces" not in stats:
                 logger.warning(
-                    "RNS.get_interface_stats() returned empty or invalid data."
+                    "RNS.get_interface_stats() returned empty or invalid data.",
                 )
                 return {
-                    "warning": "RNS.get_interface_stats() returned empty or invalid data."
+                    "warning": "RNS.get_interface_stats() returned empty or invalid data.",
                 }
             return stats
         except ConnectionRefusedError as e:
@@ -388,25 +391,24 @@ def _get_rns_stats_direct(max_retries=3, retry_delay=25):
         if result["error"] == "connection_refused" and attempt < max_retries - 1:
             logger.info("Retrying in %ss...", retry_delay)
             time.sleep(retry_delay)
+        elif result["error"] == "connection_refused":
+            logger.error(
+                "All attempts to fetch RNS stats failed due to ConnectionRefusedError.",
+            )
+            with _cache["lock"]:
+                _cache["rns_instance"] = None
+            return {
+                "error": f"Failed to fetch stats from RNS after multiple retries: {result['details']}",
+            }
         else:
-            if result["error"] == "connection_refused":
-                logger.error(
-                    "All attempts to fetch RNS stats failed due to ConnectionRefusedError."
-                )
-                with _cache["lock"]:
-                    _cache["rns_instance"] = None
-                return {
-                    "error": f"Failed to fetch stats from RNS after multiple retries: {result['details']}"
-                }
-            else:
-                with _cache["lock"]:
-                    _cache["rns_instance"] = None
-                return {
-                    "error": f"Error fetching stats directly from RNS: {result['details']}"
-                }
+            with _cache["lock"]:
+                _cache["rns_instance"] = None
+            return {
+                "error": f"Error fetching stats directly from RNS: {result['details']}",
+            }
 
     return {
-        "error": "Reached end of _get_rns_stats_direct without returning stats, implies max_retries hit for ConnectionRefusedError."
+        "error": "Reached end of _get_rns_stats_direct without returning stats, implies max_retries hit for ConnectionRefusedError.",
     }
 
 
@@ -419,6 +421,7 @@ def _parse_rns_stats_dict(stats_dict, current_uptime_tracker):
 
     Returns:
         tuple: A tuple containing the parsed data (dict) and the updated uptime tracker (dict).
+
     """
     parsed_interfaces = {}
     updated_tracker = current_uptime_tracker.copy()
@@ -430,7 +433,7 @@ def _parse_rns_stats_dict(stats_dict, current_uptime_tracker):
     if "interfaces" not in stats_dict or not isinstance(stats_dict["interfaces"], list):
         logger.warning("No 'interfaces' list in stats_dict or it's not a list.")
         return {
-            "warning": "Invalid or missing interface data in RNS stats."
+            "warning": "Invalid or missing interface data in RNS stats.",
         }, updated_tracker
 
     for ifstat in stats_dict["interfaces"]:
@@ -450,7 +453,7 @@ def _parse_rns_stats_dict(stats_dict, current_uptime_tracker):
             name_inside_brackets = ""
             if "[" in interface_name_full and "]" in interface_name_full:
                 name_inside_brackets = interface_name_full.split("[", 1)[1].rsplit(
-                    "]", 1
+                    "]", 1,
                 )[0]
             else:
                 name_inside_brackets = interface_name_full
@@ -478,10 +481,10 @@ def _parse_rns_stats_dict(stats_dict, current_uptime_tracker):
                 }
 
             previous_status_in_tracker = updated_tracker[tracker_key].get(
-                "current_status", "Down"
+                "current_status", "Down",
             )
             persisted_first_up_ts = updated_tracker[tracker_key].get(
-                "first_up_timestamp"
+                "first_up_timestamp",
             )
 
             if new_status == "Up":
@@ -528,7 +531,7 @@ def _parse_rns_stats_dict(stats_dict, current_uptime_tracker):
                     if stat_value is not None:
                         if stat_key_or_keys == "bitrate":
                             interface_details["details"][display_key] = speed_str(
-                                stat_value
+                                stat_value,
                             )
                         elif stat_key_or_keys == "noise_floor":
                             interface_details["details"][display_key] = (
@@ -561,7 +564,7 @@ def _parse_rns_stats_dict(stats_dict, current_uptime_tracker):
                                 RNSInterface.MODE_GATEWAY: "Gateway",
                             }
                             interface_details["details"][display_key] = mode_map.get(
-                                stat_value, "Unknown"
+                                stat_value, "Unknown",
                             )
                         else:
                             interface_details["details"][display_key] = str(stat_value)
@@ -658,11 +661,12 @@ def get_and_cache_rnstatus_data():
 
     Returns:
         tuple: A tuple containing the parsed data and the current time.
+
     """
     raw_stats_dict = _get_rns_stats_direct()
 
     parsed_data, updated_tracker = _parse_rns_stats_dict(
-        raw_stats_dict, _cache["interface_uptime_tracker"]
+        raw_stats_dict, _cache["interface_uptime_tracker"],
     )
     current_time = time.time()
 
@@ -677,7 +681,7 @@ def get_and_cache_rnstatus_data():
                     ):
                         prev_tracker = _cache["interface_uptime_tracker"][tracker_key]
                         if prev_tracker.get(
-                            "current_status"
+                            "current_status",
                         ) == "Up" and prev_tracker.get("first_up_timestamp"):
                             if (
                                 "first_up_timestamp" not in info
@@ -688,7 +692,7 @@ def get_and_cache_rnstatus_data():
                                 ]
 
                             if tracker_key in updated_tracker and isinstance(
-                                updated_tracker[tracker_key], dict
+                                updated_tracker[tracker_key], dict,
                             ):
                                 if (
                                     "first_up_timestamp"
@@ -715,6 +719,7 @@ def get_status_data_with_caching():
 
     Returns:
         dict: A dictionary containing the timestamp, data, and debug information.
+
     """
     start_process_time = time.time()
     with _cache["lock"]:
@@ -737,7 +742,7 @@ def get_status_data_with_caching():
         "debug": {
             "processing_time_ms": processing_time_ms,
             "cache_hit": bool(
-                cached_data and (time.time() - cache_timestamp < CACHE_DURATION_SECONDS)
+                cached_data and (time.time() - cache_timestamp < CACHE_DURATION_SECONDS),
             ),
             "rns_direct_mode": True,
         },
@@ -752,6 +757,7 @@ def sanitize_html(text):
 
     Returns:
         str: Sanitized text.
+
     """
     if not isinstance(text, str):
         return str(text)
@@ -767,6 +773,7 @@ def is_node_stale(info, current_time):
 
     Returns:
         tuple: (is_stale, last_activity_time, reason)
+
     """
     if info["status"] != "Up":
         return False, None, None
@@ -821,6 +828,7 @@ def create_status_card(section, info):
 
     Returns:
         str: The HTML for the status card.
+
     """
     current_time = time.time()
     is_stale, last_activity, stale_reason = is_node_stale(info, current_time)
@@ -875,7 +883,7 @@ def create_status_card(section, info):
     details_html_parts = []
     if address_value:
         details_html_parts.append(
-            f'<div class="detail-row"><span class="detail-label">Address</span><span class="detail-value" title="{sanitize_html(address_value)}">{sanitize_html(address_value)}</span></div>'
+            f'<div class="detail-row"><span class="detail-label">Address</span><span class="detail-value" title="{sanitize_html(address_value)}">{sanitize_html(address_value)}</span></div>',
         )
 
     if info.get("details"):
@@ -884,15 +892,15 @@ def create_status_card(section, info):
                 parts = value.split("\n")
                 if len(parts) >= 1:
                     details_html_parts.append(
-                        f'<div class="detail-row"><span class="detail-label">{sanitize_html(key)}</span><span class="detail-value">{sanitize_html(parts[0])}</span></div>'
+                        f'<div class="detail-row"><span class="detail-label">{sanitize_html(key)}</span><span class="detail-value">{sanitize_html(parts[0])}</span></div>',
                     )
                 if len(parts) >= 2:
                     details_html_parts.append(
-                        f'<div class="detail-row"><span class="detail-label">&nbsp;</span><span class="detail-value">{sanitize_html(parts[1])}</span></div>'
+                        f'<div class="detail-row"><span class="detail-label">&nbsp;</span><span class="detail-value">{sanitize_html(parts[1])}</span></div>',
                     )
             else:
                 details_html_parts.append(
-                    f'<div class="detail-row"><span class="detail-label">{sanitize_html(key)}</span><span class="detail-value">{sanitize_html(value)}</span></div>'
+                    f'<div class="detail-row"><span class="detail-label">{sanitize_html(key)}</span><span class="detail-value">{sanitize_html(value)}</span></div>',
                 )
     details_html = "".join(details_html_parts)
 
@@ -995,7 +1003,7 @@ def calculate_file_hash(filepath):
     """
     # Only allow hashing of the htmx.min.js file for security
     expected_htmx_path = os.path.abspath(
-        os.path.join(app.static_folder, "vendor", "htmx.min.js")
+        os.path.join(app.static_folder, "vendor", "htmx.min.js"),
     )
     if os.path.abspath(filepath) != expected_htmx_path:
         logger.error("Attempted to hash an unauthorized file: %s", filepath)
@@ -1077,12 +1085,11 @@ def search():
             and not request.accept_mimetypes.accept_html
         ):
             return jsonify(data_payload)
-        else:
-            error_or_warning_key = (
-                "error" if "error" in data_payload["data"] else "warning"
-            )
-            message = sanitize_html(data_payload["data"][error_or_warning_key])
-            return f'<div class="status-card error-card"><div class="error-message">{message}</div></div>'
+        error_or_warning_key = (
+            "error" if "error" in data_payload["data"] else "warning"
+        )
+        message = sanitize_html(data_payload["data"][error_or_warning_key])
+        return f'<div class="status-card error-card"><div class="error-message">{message}</div></div>'
 
     filtered_data = {}
     for section, info in data_payload["data"].items():
@@ -1108,16 +1115,15 @@ def search():
                 "data": filtered_data,
                 "debug": data_payload["debug"],
                 "query": query,
-            }
+            },
         )
+    cards_html = ""
+    if filtered_data:
+        for section, info in filtered_data.items():
+            cards_html += create_status_card(section, info)
     else:
-        cards_html = ""
-        if filtered_data:
-            for section, info in filtered_data.items():
-                cards_html += create_status_card(section, info)
-        else:
-            cards_html = '<div class="status-card error-card"><div class="error-message">No matching interfaces found for your query.</div></div>'
-        return cards_html
+        cards_html = '<div class="status-card error-card"><div class="error-message">No matching interfaces found for your query.</div></div>'
+    return cards_html
 
 
 @app.route("/api/export/<interface_name>")
@@ -1200,7 +1206,7 @@ def stream_status_events():
                 current_data_payload = get_status_data_with_caching()
                 data_timestamp_iso = current_data_payload["timestamp"]
                 data_timestamp_float = datetime.fromisoformat(
-                    data_timestamp_iso
+                    data_timestamp_iso,
                 ).timestamp()
 
                 if data_timestamp_float > last_sent_timestamp:
@@ -1214,7 +1220,7 @@ def stream_status_events():
         except Exception as e:
             logger.exception("Error in SSE stream: %s", e)
             error_payload = json.dumps(
-                {"error": "Stream error occurred", "type": "SERVER_ERROR"}
+                {"error": "Stream error occurred", "type": "SERVER_ERROR"},
             )
             yield f"event: error\ndata: {error_payload}\n\n"
 
@@ -1251,7 +1257,7 @@ def main():
         if managed_rnsd_env == "false":
             managed_rnsd = False
             logger.info(
-                "RNSD management disabled by MANAGED_RNSD=false environment variable."
+                "RNSD management disabled by MANAGED_RNSD=false environment variable.",
             )
         else:
             managed_rnsd = True
@@ -1267,7 +1273,7 @@ def main():
         _rnsd_thread.start()
     else:
         logger.info(
-            "RNSD is expected to be running externally and will not be managed by this script."
+            "RNSD is expected to be running externally and will not be managed by this script.",
         )
 
     time.sleep(3)
@@ -1296,7 +1302,7 @@ def main():
             return self.application
 
     temp_dir = os.path.abspath(
-        os.path.join(tempfile.gettempdir(), "gunicorn_rns_status")
+        os.path.join(tempfile.gettempdir(), "gunicorn_rns_status"),
     )
     try:
         os.makedirs(temp_dir, exist_ok=True)
@@ -1341,7 +1347,7 @@ def main():
             stop_rnsd()
         # Only try to remove the temp directory if it's not our persistent one
         if temp_dir != os.path.abspath(
-            os.path.join(tempfile.gettempdir(), "gunicorn_rns_status")
+            os.path.join(tempfile.gettempdir(), "gunicorn_rns_status"),
         ):
             try:
                 shutil.rmtree(temp_dir)
