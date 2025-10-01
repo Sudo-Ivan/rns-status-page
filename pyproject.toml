@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "rns-status-page"
-version = "1.4.0"
+version = "1.5.0"
 description = "A Flask web server to display Reticulum network status."
 authors = ["Ivan <rns@quad4.io>"]
 readme = "README.md"
@@ -23,7 +23,7 @@ python-dotenv = "1.1.0"
 gunicorn = "23.0.0"
 flask-talisman = "1.1.0"
 flask-limiter = "3.12"
-rns = "0.9.6"
+rns = "1.0.0"
 flask-cors = "^6.0.1"
 bleach = "^6.2.0"
 werkzeug = "^3.1.3"
