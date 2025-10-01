@@ -2,7 +2,7 @@
   
   enable_transport = False
   
-  share_instance = Yes
+  share_instance = False
   
   shared_instance_port = 37428
   instance_control_port = 37429
@@ -16,16 +16,9 @@
 
 [interfaces]
   
-
   [[Default Interface]]
     type = AutoInterface
     enabled = No
-
-  [[Quad4]]
-    type = TCPClientInterface
-    interface_enabled = true
-    target_host = rns.quad4.io
-    target_port = 4242
 
   [[RNS Testnet BetweenTheBorders]]
     type = TCPClientInterface
@@ -171,3 +164,68 @@
     target_host = 5.78.89.178
     target_port = 4242
 
+  [[FireZen]]
+    type = TCPClientInterface
+    interface_enabled = true
+    target_host = firezen.com
+    target_port = 4242
+
+  [[Jon's Node]]
+    type = TCPClientInterface
+    interface_enabled = true
+    target_host = rns.jlamothe.net
+    target_port = 4242
+
+  [[noDNS1]]
+    type = TCPClientInterface
+    interface_enabled = true
+    target_host = 202.61.243.41
+    target_port = 4965
+
+  [[noDNS2]]
+    type = TCPClientInterface
+    interface_enabled = true
+    target_host = 193.26.158.230
+    target_port = 4965
+
+  [[NomadNode SEAsia TCP]]
+    type = TCPClientInterface
+    interface_enabled = true
+    target_host = rns.jaykayenn.net
+    target_port = 4242
+
+  [[ON6ZQ]]
+    type = TCPClientInterface
+    interface_enabled = true
+    target_host = reticulum.on6zq.be
+    target_port = 4965
+
+  [[0rbit-Net]]
+    type = TCPClientInterface
+    interface_enabled = true
+    target_host = 93.95.227.8
+    target_port = 49952
+
+  [[Quad4 TCP Node]]
+    type = TCPClientInterface
+    interface_enabled = true
+    target_host = rns.quad4.io
+    target_port = 4242
+
+  [[RNS bnZ-NODE01]]
+    type = TCPClientInterface
+    interface_enabled = true
+    target_host = node01.rns.bnz.se
+    target_port = 4242
+
+  [[RNS HAM RADIO]]
+    type = TCPClientInterface
+    interface_enabled = true
+    target_host = 135.125.238.229
+    target_port = 4242
+
+  [[rtclm.de]]
+    type = TCPClientInterface
+    interface_enabled = true
+    target_host = rtclm.de
+    target_port = 4242
