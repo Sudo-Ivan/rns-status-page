@@ -803,8 +803,9 @@ def is_node_stale(info, current_time):
             if len(parts) >= 2:
                 tx_freq = float(parts[0].split()[0])
                 rx_freq = float(parts[1].split()[0])
-                if tx_freq == 0 and rx_freq == 0:
-                    reason.append("no announces")
+                # Check if receiving no announces but sending announces
+                if rx_freq == 0 and tx_freq > 0:
+                    reason.append("receiving no announces but sending announces")
         except (ValueError, IndexError):
             pass
 
