@@ -13,6 +13,8 @@ services:
       - NET_RAW
     environment:
       - GUNICORN_WORKERS=1
+    security_opt:
+      - no-new-privileges:true
     deploy:
       resources:
         limits:
