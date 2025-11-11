@@ -1,5 +1,7 @@
 # Reticulum Status Page
 
+No longer maintained as of November 2025. Feel free to fork and turn it into your own thing.
+
 [![Build and Publish Docker Image](https://github.com/Sudo-Ivan/rns-status-page/actions/workflows/docker.yml/badge.svg)](https://github.com/Sudo-Ivan/rns-status-page/actions/workflows/docker.yml)
 [![Socket Badge](https://socket.dev/api/badge/pypi/package/rns-status-page/1.1.2?artifact_id=tar-gz)](https://socket.dev/pypi/package/rns-status-page/overview/)
 [![DeepSource](https://app.deepsource.com/gh/Sudo-Ivan/rns-status-page.svg/?label=active+issues&show_trend=true&token=KkPl8dmgLrQhOIP9tmkiyPgP)](https://app.deepsource.com/gh/Sudo-Ivan/rns-status-page/)
